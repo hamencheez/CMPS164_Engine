@@ -1,0 +1,695 @@
+/*
+ *  File: main.cpp
+ *	Description: Display a spirograph in 3D
+ *	
+ *	OpenGL base program by Nathaniel Cesario
+ *	Modified by Eric Lipschutz
+ */
+
+#include "../GL/glew.h"
+#include "../GL/freeglut.h"
+#include "../GL/glui.h"
+//#include <GL/gl.h>
+
+#define GLM_SWIZZLE
+#include "../glm/glm.hpp"
+#include "../glm/gtc/type_ptr.hpp"
+#include "../glm/gtc/matrix_transform.hpp"
+#include "../glm/gtc/matrix_access.hpp"
+
+#include <cmath>
+
+#include <iostream>
+#include <vector>
+#include <string>
+#include <fstream>
+using namespace std;
+
+/**
+ * Simple class for keeping track of shader program and vertex attribute
+ * locations.
+ */
+class Shader {
+public:
+    Shader(string vertFile, string fragFile) { fromFiles(vertFile, fragFile); }
+
+    /**
+     * Creates a shader program based on vertex and fragment source.
+     *
+     * @param vertFile Path to vertex source
+     * @param fragFile Path to fragment source
+     */
+    void fromFiles(string vertFile, string fragFile) {
+        //These are shader objects containing the shader source code
+        GLint vSource = setShaderSource(vertFile, GL_VERTEX_SHADER);
+        GLint fSource = setShaderSource(fragFile, GL_FRAGMENT_SHADER);
+
+        //Create a new shader program
+        program = glCreateProgram();
+
+        //Compile the source code for each shader and attach it to the program.
+        glCompileShader(vSource);
+        printLog("vertex compile log: ", vSource);
+        glAttachShader(program, vSource);
+
+        glCompileShader(fSource);
+        printLog("fragment compile log: ", fSource);
+        glAttachShader(program, fSource);
+
+        //we could attach more shaders, such as a geometry or tessellation
+        //shader here.
+
+        //link all of the attached shader objects
+        glLinkProgram(program);
+    }
+
+    /**
+     * Helper method for reading in the source for a shader and creating a
+     * shader object.
+     *
+     * @param file Filename of shader source
+     * @param type Type of shader-> Only GL_VERTEX_SHADER and GL_FRAGMENT_SHADER
+     *   are supported here.
+     */
+    GLint setShaderSource(string file, GLenum type) {
+        //read source code
+        ifstream fin(file.c_str());
+        if (fin.fail()) {
+            cerr << "Could not open " << file << " for reading" << endl;
+            return -1;
+        }
+        fin.seekg(0, ios::end);
+        int count  = fin.tellg();
+        char *data = NULL;
+        if (count > 0) {
+            fin.seekg(ios::beg);
+            data = new char[count+1];
+            fin.read(data,count);
+            data[count] = '\0';
+        }
+        fin.close();
+
+        //create the shader
+        GLint s = glCreateShader(type);
+        glShaderSource(s, 1, const_cast<const char **>(&data), NULL);
+        delete [] data;
+        return s;
+    }
+
+    /**
+     * Helper function used for debugging.
+     */
+    void printLog(std::string label, GLint obj) {
+        int infologLength = 0;
+        int maxLength = 256;
+
+        if(glIsShader(obj)) {
+            glGetShaderiv(obj,GL_INFO_LOG_LENGTH,&maxLength);
+        } else {
+            glGetProgramiv(obj,GL_INFO_LOG_LENGTH,&maxLength);
+        }
+
+        char infoLog[256];
+
+        if (glIsShader(obj)) {
+            glGetShaderInfoLog(obj, maxLength, &infologLength, infoLog);
+        } else {
+            glGetProgramInfoLog(obj, maxLength, &infologLength, infoLog);
+        }
+
+        if (infologLength > 0) {
+            cerr << label << infoLog << endl;
+        }
+    }
+
+    GLint program; //shader program
+    GLint modelViewLoc; //location of the modelview matrix in the program (M)
+    GLint projectionLoc; //location of the projection matrix in the program (P)
+    GLint normalMatrixLoc; //location of the normal matrix in the program (M_n)
+    GLint vertexLoc, normalLoc; //vertex attribute locations (pos and norm)
+      //respectively
+    GLint timeLoc; //location of time variable
+    GLuint vertexBuffer, normalBuffer; //used to keep track of GL buffer objects
+};
+Shader *shader = NULL;
+
+int WIN_WIDTH = 512, WIN_HEIGHT = 512; //window width/height
+glm::mat4 modelView, projection, camera; //matrices for shaders
+float animTime = 0.0f, deltaT = 0.0001; //variables for animation
+
+const float PI = 3.14159265359f;
+
+int main_window;
+
+float r = 0.01f;
+float R = 1.0f;
+float p = 1.0f;
+float s = 0.002f;
+float t = 0.0f;
+int steps = 5000;
+float fov = 45.0f;
+float eyeZ = 6.0f;
+float rotSpeed = 0.5f;
+
+float points [16][3] = {
+		{-.5, 0, 1},
+		{.5, 0, 1},
+		{.5, 0, 0},
+		{-.5, 0, 0},//first tile, top
+		{-1.5, 0, 0},
+		{-.5, 0, 0},
+		{-.5, 0, -1},
+		{-1.5, 0, -1},//second tile, top
+		{-.5, 0, 0},
+		{.5, 0, 0},
+		{.5, 0, -1},
+		{-.5, 0, -1},//third tile, top
+		{.5, 0, 0},
+		{1.5, 0, 0},
+		{1.5, 0, -1},
+		{.5, 0, -1},//fourth tile, top
+
+	};
+	float side [4][4] = {
+		{1, 1, 0, 1},
+		{1, 0, 1, 1},
+		{0, 0, 1, 0},
+		{1, 1, 1, 0},
+	};
+
+
+float golfGreen[3] = {0.0f, .4f, 0.0f};
+float tanColor[3] = {.2f, .2f, 0.1f};
+
+vector<float> axisVerts; //vertex array
+vector<float> axisNorms; //normal array
+size_t numAxisVerts; //number of total vertices
+
+vector<float> verts; //vertex array
+vector<float> norms; //normal array
+size_t numVerts; //number of total vertices
+
+//Draws the spirograph
+void drawSpirograph(){
+	axisVerts.clear();
+	axisNorms.clear();
+
+	verts.clear();
+	norms.clear();
+
+	float maxRadius = abs(R)+abs(r)+abs(p);
+	float minWinDim = (float)min(WIN_WIDTH, WIN_HEIGHT);
+	float scaleFactor = 1.0f/maxRadius;
+
+	//eyeZ = (3.0*maxRadius)/tan(fov*PI/180.0f); //Set the eye z position to make sure the entire image is visible
+
+	float rotStep = 0.1;
+	float x, y, z = 0;
+	float rot = 0;
+
+	//The normals are used to define draw color since I don't need them for lighting.
+
+	//Axis
+	float axisLength = 3.0f;
+
+/*	axisVerts.push_back(0);
+	axisVerts.push_back(0);
+	axisVerts.push_back(0);
+	axisNorms.push_back(0);axisNorms.push_back(0);axisNorms.push_back(1);
+
+	axisVerts.push_back(0);
+	axisVerts.push_back(0);
+	axisVerts.push_back(axisLength);
+	axisNorms.push_back(0);axisNorms.push_back(0);axisNorms.push_back(1);
+
+	axisVerts.push_back(0);
+	axisVerts.push_back(0);
+	axisVerts.push_back(0);
+	axisNorms.push_back(0);axisNorms.push_back(1);axisNorms.push_back(0);
+
+	axisVerts.push_back(axisLength);
+	axisVerts.push_back(0);
+	axisVerts.push_back(0);
+	axisNorms.push_back(0);axisNorms.push_back(1);axisNorms.push_back(0);
+
+	axisVerts.push_back(0);
+	axisVerts.push_back(0);
+	axisVerts.push_back(0);
+	axisNorms.push_back(1);axisNorms.push_back(0);axisNorms.push_back(0);
+
+	axisVerts.push_back(0);
+	axisVerts.push_back(axisLength);
+	axisVerts.push_back(0);
+	axisNorms.push_back(1);axisNorms.push_back(0);axisNorms.push_back(0);
+
+	numAxisVerts = axisVerts.size() / 3;*/
+
+	//Tiles
+	//Tile 1
+	verts.push_back(points[0][0]);
+	verts.push_back(points[0][1]);
+	verts.push_back(points[0][2]);
+	norms.push_back(golfGreen[0]);norms.push_back(golfGreen[1]);norms.push_back(golfGreen[2]);
+
+	verts.push_back(points[1][0]);
+	verts.push_back(points[1][1]);
+	verts.push_back(points[1][2]);
+	norms.push_back(golfGreen[0]);norms.push_back(golfGreen[1]);norms.push_back(golfGreen[2]);
+
+	verts.push_back(points[2][0]);
+	verts.push_back(points[2][1]);
+	verts.push_back(points[2][2]);
+	norms.push_back(golfGreen[0]);norms.push_back(golfGreen[1]);norms.push_back(golfGreen[2]);
+
+	verts.push_back(points[3][0]);
+	verts.push_back(points[3][1]);
+	verts.push_back(points[3][2]);
+	norms.push_back(golfGreen[0]);norms.push_back(golfGreen[1]);norms.push_back(golfGreen[2]);
+
+	//Tile 2
+	verts.push_back(points[4][0]);
+	verts.push_back(points[4][1]);
+	verts.push_back(points[4][2]);
+	norms.push_back(golfGreen[0]);norms.push_back(golfGreen[1]);norms.push_back(golfGreen[2]);
+
+	verts.push_back(points[5][0]);
+	verts.push_back(points[5][1]);
+	verts.push_back(points[5][2]);
+	norms.push_back(golfGreen[0]);norms.push_back(golfGreen[1]);norms.push_back(golfGreen[2]);
+
+	verts.push_back(points[6][0]);
+	verts.push_back(points[6][1]);
+	verts.push_back(points[6][2]);
+	norms.push_back(golfGreen[0]);norms.push_back(golfGreen[1]);norms.push_back(golfGreen[2]);
+
+	verts.push_back(points[7][0]);
+	verts.push_back(points[7][1]);
+	verts.push_back(points[7][2]);
+	norms.push_back(golfGreen[0]);norms.push_back(golfGreen[1]);norms.push_back(golfGreen[2]);
+
+	//Tile 3
+	verts.push_back(points[8][0]);
+	verts.push_back(points[8][1]);
+	verts.push_back(points[8][2]);
+	norms.push_back(golfGreen[0]);norms.push_back(golfGreen[1]);norms.push_back(golfGreen[2]);
+
+	verts.push_back(points[9][0]);
+	verts.push_back(points[9][1]);
+	verts.push_back(points[9][2]);
+	norms.push_back(golfGreen[0]);norms.push_back(golfGreen[1]);norms.push_back(golfGreen[2]);
+
+	verts.push_back(points[10][0]);
+	verts.push_back(points[10][1]);
+	verts.push_back(points[10][2]);
+	norms.push_back(golfGreen[0]);norms.push_back(golfGreen[1]);norms.push_back(golfGreen[2]);
+
+	verts.push_back(points[11][0]);
+	verts.push_back(points[11][1]);
+	verts.push_back(points[11][2]);
+	norms.push_back(golfGreen[0]);norms.push_back(golfGreen[1]);norms.push_back(golfGreen[2]);
+
+	//Tile 4
+	verts.push_back(points[12][0]);
+	verts.push_back(points[12][1]);
+	verts.push_back(points[12][2]);
+	norms.push_back(golfGreen[0]);norms.push_back(golfGreen[1]);norms.push_back(golfGreen[2]);
+
+	verts.push_back(points[13][0]);
+	verts.push_back(points[13][1]);
+	verts.push_back(points[13][2]);
+	norms.push_back(golfGreen[0]);norms.push_back(golfGreen[1]);norms.push_back(golfGreen[2]);
+
+	verts.push_back(points[14][0]);
+	verts.push_back(points[14][1]);
+	verts.push_back(points[14][2]);
+	norms.push_back(golfGreen[0]);norms.push_back(golfGreen[1]);norms.push_back(golfGreen[2]);
+
+	verts.push_back(points[15][0]);
+	verts.push_back(points[15][1]);
+	verts.push_back(points[15][2]);
+	norms.push_back(golfGreen[0]);norms.push_back(golfGreen[1]);norms.push_back(golfGreen[2]);
+
+	//Draw Sides
+
+	for (int x = 0; x < 4; x++){
+	
+		  if (side[x][0] == 1) 
+	  {  
+		//side 1
+	verts.push_back(points[4*x][0]);
+	verts.push_back((points[4*x][1])+.2);
+	verts.push_back(points[4*x][2]);
+	norms.push_back(tanColor[0]);norms.push_back(tanColor[1]);norms.push_back(tanColor[2]);
+
+	verts.push_back(points[4*x+1][0]);
+	verts.push_back((points[4*x+1][1])+.2);
+	verts.push_back(points[4*x+1][2]);
+	norms.push_back(tanColor[0]);norms.push_back(tanColor[1]);norms.push_back(tanColor[2]);
+
+	verts.push_back(points[4*x+1][0]);
+	verts.push_back(points[4*x+1][1]);
+	verts.push_back(points[4*x+1][2]);
+	norms.push_back(tanColor[0]);norms.push_back(tanColor[1]);norms.push_back(tanColor[2]);
+
+	verts.push_back(points[4*x][0]);
+	verts.push_back(points[4*x][1]);
+	verts.push_back(points[4*x][2]);
+	norms.push_back(tanColor[0]);norms.push_back(tanColor[1]);norms.push_back(tanColor[2]);
+
+	  }
+
+		  		  if (side[x][1] == 1) 
+	  {  
+		//side 2
+	verts.push_back(points[4*x+1][0]);
+	verts.push_back((points[4*x+1][1])+.2);
+	verts.push_back(points[4*x+1][2]);
+	norms.push_back(tanColor[0]);norms.push_back(tanColor[1]);norms.push_back(tanColor[2]);
+
+	verts.push_back(points[4*x+2][0]);
+	verts.push_back((points[4*x+2][1])+.2);
+	verts.push_back(points[4*x+2][2]);
+	norms.push_back(tanColor[0]);norms.push_back(tanColor[1]);norms.push_back(tanColor[2]);
+
+	verts.push_back(points[4*x+2][0]);
+	verts.push_back(points[4*x+2][1]);
+	verts.push_back(points[4*x+2][2]);
+	norms.push_back(tanColor[0]);norms.push_back(tanColor[1]);norms.push_back(tanColor[2]);
+
+	verts.push_back(points[4*x+1][0]);
+	verts.push_back(points[4*x+1][1]);
+	verts.push_back(points[4*x+1][2]);
+	norms.push_back(tanColor[0]);norms.push_back(tanColor[1]);norms.push_back(tanColor[2]);
+
+	  }
+
+	 if (side[x][2] == 1) 
+	  {  
+		//side 3
+	verts.push_back(points[4*x+2][0]);
+	verts.push_back((points[4*x+2][1])+.2);
+	verts.push_back(points[4*x+2][2]);
+	norms.push_back(tanColor[0]);norms.push_back(tanColor[1]);norms.push_back(tanColor[2]);
+
+	verts.push_back(points[4*x+3][0]);
+	verts.push_back((points[4*x+3][1])+.2);
+	verts.push_back(points[4*x+3][2]);
+	norms.push_back(tanColor[0]);norms.push_back(tanColor[1]);norms.push_back(tanColor[2]);
+
+	verts.push_back(points[4*x+3][0]);
+	verts.push_back(points[4*x+3][1]);
+	verts.push_back(points[4*x+3][2]);
+	norms.push_back(tanColor[0]);norms.push_back(tanColor[1]);norms.push_back(tanColor[2]);
+
+	verts.push_back(points[4*x+2][0]);
+	verts.push_back(points[4*x+2][1]);
+	verts.push_back(points[4*x+2][2]);
+	norms.push_back(tanColor[0]);norms.push_back(tanColor[1]);norms.push_back(tanColor[2]);
+
+	  }
+
+	 if (side[0][3] == 1) 
+	  {  
+		//side 4
+	verts.push_back(points[4*x+3][0]);
+	verts.push_back((points[4*x+3][1])+.2);
+	verts.push_back(points[4*x+3][2]);
+	norms.push_back(tanColor[0]);norms.push_back(tanColor[1]);norms.push_back(tanColor[2]);
+
+	verts.push_back(points[4*x][0]);
+	verts.push_back((points[4*x][1])+.2);
+	verts.push_back(points[4*x][2]);
+	norms.push_back(tanColor[0]);norms.push_back(tanColor[1]);norms.push_back(tanColor[2]);
+
+	verts.push_back(points[4*x][0]);
+	verts.push_back(points[4*x][1]);
+	verts.push_back(points[4*x][2]);
+	norms.push_back(tanColor[0]);norms.push_back(tanColor[1]);norms.push_back(tanColor[2]);
+
+	verts.push_back(points[4*x+3][0]);
+	verts.push_back(points[4*x+3][1]);
+	verts.push_back(points[4*x+3][2]);
+	norms.push_back(tanColor[0]);norms.push_back(tanColor[1]);norms.push_back(tanColor[2]);
+
+	  }
+	 }
+
+
+    numVerts = verts.size() / 3;
+
+}
+
+//updates values based on some change in time
+void update(float dt) {
+    animTime += dt;
+
+	drawSpirograph();
+
+	//camera = glm::lookAt(glm::vec3(0.0f,0.0f,5.0f), glm::vec3(0,0,0), glm::vec3(0,1,0));
+	camera = glm::lookAt(glm::vec3(5.0f,5.0f,5.0f), glm::vec3(0,0,0), glm::vec3(0,1,0));
+
+	/*projection = glm::perspective(
+            fov,
+            glm::float_t(WIN_WIDTH) / glm::float_t(WIN_HEIGHT),
+            glm::float_t(0.1),
+            glm::float_t(1000.0)
+    );*/
+	float aspect = glm::float_t(WIN_WIDTH) / glm::float_t(WIN_HEIGHT);
+	float dims = 5.0f;
+	projection = glm::ortho(-dims*aspect,dims*aspect,-dims,dims,-20.0f,20.0f);
+
+	//modelView = glm::mat4();
+    //modelView = glm::rotate(modelView, glm::float_t(45), glm::vec3(1,0,0));
+	//modelView = glm::rotate(modelView, glm::float_t(rotSpeed), glm::vec3(0,1,0));
+}
+
+//reshape function for GLUT
+void reshape(int w, int h) {
+	GLUI_Master.auto_set_viewport();
+    WIN_WIDTH = w;
+    WIN_HEIGHT = h;
+    /*projection = glm::perspective(
+            fov,
+            glm::float_t(WIN_WIDTH) / glm::float_t(WIN_HEIGHT),
+            glm::float_t(0.1),
+            glm::float_t(1000.0)
+    );*/
+	//projection = glm::ortho(-10.0f,10.0f,-10.0f,10.0f,-10.0f,10.0f);
+}
+
+//display function for GLUT
+void display() {
+	//drawSpirograph();
+
+	//GLUI_Master.auto_set_viewport();
+    //glViewport(0,0,WIN_WIDTH,WIN_HEIGHT);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    //Setup the modelview matrix
+//    Mat4x4F modelCam = camera * modelView;
+    glm::mat4 modelCam = camera * modelView;
+
+    //grab the normal matrix from the modelview matrix (upper 3x3 entries of
+    //modelview).
+    glm::mat3 normalMatrix(modelCam);
+    normalMatrix = glm::inverse(normalMatrix);
+    normalMatrix = glm::transpose(normalMatrix);
+
+	//Set the current shader
+    glUseProgram(shader->program);
+
+    //Pass the matrices and animation time to GPU
+    glUniformMatrix4fv(
+            shader->modelViewLoc, //handle to variable in the shader program
+            1, //how many matrices we want to send
+            GL_FALSE, //transpose the matrix
+            glm::value_ptr(modelCam) //a pointer to an array containing the entries for
+              //the matrix
+            );
+    glUniformMatrix4fv(shader->projectionLoc, 1, GL_FALSE,
+            glm::value_ptr(projection));
+    glUniformMatrix3fv(shader->normalMatrixLoc, 1, GL_FALSE,
+            glm::value_ptr(normalMatrix));
+    glUniform1f(shader->timeLoc, animTime);
+
+	//Draw tile
+
+	//Re-upload data buffers
+	glBindBuffer(GL_ARRAY_BUFFER, shader->vertexBuffer);
+    glBufferData(GL_ARRAY_BUFFER, verts.size() * sizeof(float), verts.data(),GL_DYNAMIC_DRAW);
+
+    glBindBuffer(GL_ARRAY_BUFFER, shader->normalBuffer);
+    glBufferData(GL_ARRAY_BUFFER, norms.size() * sizeof(float), norms.data(), GL_DYNAMIC_DRAW);
+
+
+    glBindBuffer(GL_ARRAY_BUFFER, shader->vertexBuffer); //which buffer we want
+      //to use
+    glEnableVertexAttribArray(shader->vertexLoc); //enable the attribute
+    glVertexAttribPointer(shader->vertexLoc, 3, GL_FLOAT, GL_FALSE, 0, NULL);
+
+    //same procedure for the normal array
+    glBindBuffer(GL_ARRAY_BUFFER, shader->normalBuffer);
+    glEnableVertexAttribArray(shader->normalLoc);
+    glVertexAttribPointer(shader->normalLoc, 3, GL_FLOAT, GL_FALSE, 0, NULL);
+
+    //draw the vertices/normals we just specified.
+    glDrawArrays(GL_QUADS, 0, numVerts);
+
+	//Draw axis
+
+	//Re-upload data buffers
+	glBindBuffer(GL_ARRAY_BUFFER, shader->vertexBuffer);
+    glBufferData(GL_ARRAY_BUFFER, axisVerts.size() * sizeof(float), axisVerts.data(),GL_DYNAMIC_DRAW);
+
+    glBindBuffer(GL_ARRAY_BUFFER, shader->normalBuffer);
+    glBufferData(GL_ARRAY_BUFFER, axisNorms.size() * sizeof(float), axisNorms.data(), GL_DYNAMIC_DRAW);
+
+
+    glBindBuffer(GL_ARRAY_BUFFER, shader->vertexBuffer); //which buffer we want
+      //to use
+    glEnableVertexAttribArray(shader->vertexLoc); //enable the attribute
+    glVertexAttribPointer(shader->vertexLoc, 3, GL_FLOAT, GL_FALSE, 0, NULL);
+
+    //same procedure for the normal array
+    glBindBuffer(GL_ARRAY_BUFFER, shader->normalBuffer);
+    glEnableVertexAttribArray(shader->normalLoc);
+    glVertexAttribPointer(shader->normalLoc, 3, GL_FLOAT, GL_FALSE, 0, NULL);
+
+    //draw the vertices/normals we just specified.
+    glDrawArrays(GL_LINES, 0, numAxisVerts);
+
+    //update animation variables.
+    //have time oscillate between 0.0 and 1.0.
+    if ((animTime >= 1.0 && deltaT > 0.0) ||
+            (animTime <= 0.0 && deltaT < 0.0)) {
+        deltaT = -deltaT;
+    }
+    update(deltaT);
+
+    glutSwapBuffers();
+}
+
+//idle function for GLUT
+void idle() {
+	if(glutGetWindow() != main_window){
+		glutSetWindow(main_window);
+	}
+
+    glutPostRedisplay();
+}
+
+//captures keyborad input for GLUT
+void keyboard(unsigned char key, int x, int y) {
+    switch (key) {
+    case 27:
+        exit(0);
+        break;
+    }
+}
+
+//do some GLUT initialization
+void setupGLUT() {
+    glutInitDisplayMode(GLUT_DEPTH | GLUT_RGBA | GLUT_DOUBLE);
+    glutInitWindowPosition(100,100);
+    glutInitWindowSize(WIN_WIDTH, WIN_HEIGHT);
+    main_window = glutCreateWindow("Isometric Projection");
+
+    glutReshapeFunc(reshape);
+
+    glutDisplayFunc(display);
+
+    glutKeyboardFunc(keyboard);
+
+	GLUI_Master.set_glutKeyboardFunc(keyboard);
+	//GLUI_Master.set_glutSpecialFunc(keyboard);
+	//GLUI_Master.set_glutMouseFunc(keyboard);
+	GLUI_Master.set_glutReshapeFunc(reshape);
+
+    //glutIdleFunc(idle);
+
+	//GLUI stuff
+	/*GLUI *glui = GLUI_Master.create_glui_subwindow(main_window, GLUI_SUBWINDOW_LEFT);
+	GLUI_Spinner *r1Spin = glui->add_spinner("Radius 1", GLUI_SPINNER_FLOAT, &r);
+	r1Spin->set_float_limits(0.001f,500.0f);
+	r1Spin->set_speed(0.0001f);
+	glui->add_spinner("Radius 2", GLUI_SPINNER_FLOAT, &R)->set_speed(0.01f);;
+	glui->add_spinner("Pen Position", GLUI_SPINNER_FLOAT, &p);//->set_speed(0.01f);;
+	glui->add_spinner("Step Size", GLUI_SPINNER_FLOAT, &s)->set_speed(0.01f);
+	glui->add_spinner("Steps", GLUI_SPINNER_INT, &steps);
+	glui->add_spinner("Rotation Speed", GLUI_SPINNER_FLOAT, &rotSpeed)->set_speed(0.1f);
+
+	glui->set_main_gfx_window(main_window);*/
+	GLUI_Master.set_glutIdleFunc(idle);
+	GLUI_Master.sync_live_all();
+}
+
+//initialize OpenGL background color and vertex/normal arrays
+void setupGL() {
+    glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+
+	drawSpirograph();
+
+    camera = glm::lookAt(glm::vec3(5.0f,5.0f,5.0f), glm::vec3(0,0,0), glm::vec3(0,1,0));
+
+    /*projection = glm::perspective(
+            fov,
+            glm::float_t(WIN_WIDTH) / glm::float_t(WIN_HEIGHT),
+            glm::float_t(0.1),
+            glm::float_t(1000.0)
+    );*/
+	projection = glm::ortho(-10.0f,10.0f,-10.0f,10.0f,-10.0f,10.0f);
+}
+
+//setup the shader program
+void setupShaders() {
+    //create the shader program from a vertex and fragment shader
+    shader = new Shader("../shaders/gles.vert", "../shaders/gles.frag");
+
+    shader->modelViewLoc = glGetUniformLocation(shader->program, "M");
+    shader->projectionLoc = glGetUniformLocation(shader->program, "P");
+    shader->normalMatrixLoc = glGetUniformLocation(shader->program, "M_n");
+    shader->timeLoc = glGetUniformLocation(shader->program, "time");
+
+    shader->vertexLoc = glGetAttribLocation(shader->program, "pos");
+    shader->normalLoc = glGetAttribLocation(shader->program, "norm");
+
+    //Create buffers for the vertex and normal attribute arrays
+    GLuint bufs[2];
+    glGenBuffers(2, bufs);
+
+    shader->vertexBuffer = bufs[0];
+    shader->normalBuffer = bufs[1];
+
+    glBindBuffer(GL_ARRAY_BUFFER, shader->vertexBuffer);
+    glBufferData(
+            GL_ARRAY_BUFFER, //what kind of buffer (an array)
+            verts.size() * sizeof(float), //size of the buffer in bytes
+            verts.data(), //pointer to data we want to fill the buffer with
+            GL_DYNAMIC_DRAW //how we intend to use the buffer
+            );
+
+    glBindBuffer(GL_ARRAY_BUFFER, shader->normalBuffer);
+    glBufferData(
+            GL_ARRAY_BUFFER,
+            norms.size() * sizeof(float),
+            norms.data(),
+            GL_DYNAMIC_DRAW
+            );
+}
+
+int main(int argc, char **argv) {
+    glutInit(&argc, argv);
+    setupGLUT();
+    setupGL();
+
+    glewInit();
+
+    setupShaders();
+
+    glutMainLoop();
+
+    if (shader) delete shader;
+
+    return 0;
+}
+
