@@ -51,9 +51,10 @@ vector<float> FileHandler::readLevel(const char *filename){
                 if(tileType.compare("tile") == 0){
                     for(int i = 0; i < 4; i++){
                         fscanf(f, "%d %f %f %f ", &tileInd, &vertx, &verty, &vertz); 
-                        verts.push_back(vertx);
-                        verts.push_back(verty);
-                        verts.push_back(vertz);
+			            verts[tileInd].push_back(vector<float>());
+                        verts[tileInd].push_back(vertx);
+                        verts[tileInd].push_back(verty);
+                        verts[tileInd].push_back(vertz);
                     }
                     fscanf(f, "%d %d %d %d", i1, i2, i3, i4);     
 
@@ -65,23 +66,17 @@ vector<float> FileHandler::readLevel(const char *filename){
                 }
                 else if(tileType.compare("tee") == 0){
                     fscanf(f, "%d %f %f %f ", &tileInd, &vertx, &verty, &vertz); 
-                    verts.insert(verts.begin(), vertx);
-                    verts.insert(verts.begin(), verty);
-                    verts.insert(verts.begin(), vertz);
+                    teeVerts.push_back(vertx);
+                    teeVerts.push_back(verty);
+                    teeVerts.push_back(vertz);
+                    teeTileInd = tileInd;
                 }
                 else if(tileType.compare("cup") == 0){
-                    if(!hasTee){
-                        fscanf(f, "%d %f %f %f ", &tileInd, &vertx, &verty, &vertz); 
-                        verts.insert(verts.begin(), vertx); 
-                        verts.insert(verts.begin(), verty); 
-                        verts.insert(verts.begin(), vertz); 
-                    }
-                    else {
-                        fscanf(f, "%d %f %f %f ", &tileInd, &vertx, &verty, &vertz); 
-                        verts.insert(verts.begin() + 3, vertx);
-                        verts.insert(verts.begin() + 3, verty); 
-                        verts.insert(verts.begin() + 3, vertz);
-                    }
+                    fscanf(f, "%d %f %f %f ", &tileInd, &vertx, &verty, &vertz); 
+                    cupVerts.push_back(vertx);
+                    cupVerts.push_back(verty); 
+                    cupVerts.push_back(vertz);
+                    cupTileInd = tileInd;
                 }
                 else {
                     cout << "Do not recognize tile type on line " << ind << " in file " << filename << endl;
