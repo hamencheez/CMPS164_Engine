@@ -177,7 +177,7 @@ void translateMatrix(float x, float y, float z, glm::mat4 &matToTrans){
 
 void resetBall(){
 	golfBall->velocity = new Vector3(0, 0, 0);
-	ballPos = glm::vec3(resManager->getTee().x, resManager->getTee().z, resManager->getTee().y);
+	ballPos = glm::vec3(resManager->getTee().x, resManager->getTee().y, resManager->getTee().z);
 	//modelViewBall = glm::translate(modelView, glm::vec3(resManager->getTee().x, resManager->getTee().z, resManager->getTee().y));
 }
 
