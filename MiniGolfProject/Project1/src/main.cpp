@@ -124,6 +124,8 @@ vector<float> verts, norms, color, levelVerts, levelNorms, levelColor, wallVerts
 vector<glm::mat4> modelViews;
 vector<vector<float>> objVerts, objNorms, objColor;
 map<int, pair<int, int>> objIndices;
+vector<glm::vec3> objPositions;
+vector<bool> objVisible;
 
 bool xSelect, ySelect, zSelect, scaleSelect, cameraSelect;
 bool mouseDownL, mouseDownR, bBox, smoothShade, freeLook, ballMoving;
@@ -163,7 +165,7 @@ void bindLevelVecs(){
 	objVerts = currGame->objVerts;
 	objNorms = currGame->objNorms;
 	objColor = currGame->objColor;
-	modelViews = currGame->modelViews;
+	objPositions = currGame->objPositions;
 }
 
 void draw_string( float x, float y, float z, char *txt )
@@ -304,6 +306,8 @@ void display() {
 	//updateBall();
 
 	if(!currGame->Update()) bindLevelVecs();
+	modelViews = currGame->modelViews;
+	objVisible = currGame->isVisible;
 	
 //	camPos = cameraManager->getCamPos();
 //	camTarg = cameraManager->getCamTargPos();
@@ -395,8 +399,10 @@ void display() {
 	//Draw all game objects
 
 	for(int i = 0; i < objIndices.size(); i++){
-		drawObject(modelViews[objIndices[i].first],   objVerts[objIndices[i].second],
+		if(objVisible[i]){
+			drawObject(modelViews[objIndices[i].first],   objVerts[objIndices[i].second],
 					 objNorms[objIndices[i].second],	objColor[objIndices[i].second], 1);
+		}
 	}
 	
     glutSwapBuffers();

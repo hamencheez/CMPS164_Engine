@@ -18,9 +18,7 @@ void MiniGolf::GameInit(){
 	levelNames = resMan->getLevelNames();
 	ballMoving = false;
 	arrowAngle = 0;
-	cup = Cup();
-	ball = Ball();
-	ball.Initialize(tees[0].x, tees[0].y, tees[0].z);
+	strokeNum = totalScore = 0;
 	objVerts.push_back(gameObjectData->at("ballVert"));
 	objVerts.push_back(gameObjectData->at("arrowVert"));
 	objVerts.push_back(gameObjectData->at("cupVert"));
@@ -35,13 +33,23 @@ void MiniGolf::GameInit(){
 	objIndices[2] = make_pair(2, 2);
 	setDefaultModelView(defaultView);
 		
+	cup = Cup();
+	ball = Ball();
+	cup.setPos(cups[0].x, cups[0].y, cups[0].z);
+	modelViews[2] = glm::translate(defaultView,glm::vec3(cup.x, cup.z, cup.y));
+	ball.Initialize(tees[0].x, tees[0].y, tees[0].z);
 	camManager = new Camera(&ball);
 	camManager->setCamPos(5, 5, 7);
 	camManager->setCamTarg(0, 0, 0);
 }
 
+void MiniGolf::UpdateObjPositions(){	
+
+}
+
 bool MiniGolf::Update(){
 	ball.position = ball.position->add(ball.velocity);
+	camManager->setCamTarg(ball.position->getX(), ball.position->getZ(), ball.position->getY());
 	//golfball.setVelocity(0, 0, 0);	
 	ball.aim = arrowAngle;
 	//Find the current tile we are on
@@ -53,9 +61,10 @@ bool MiniGolf::Update(){
 	physMan->checkForCollision(currTile, &ball);
 
 	//Check to see if we're in the cup
-	//if(checkForBallInHole()){
-	//	playNextLevel();
-	//}
+	if(checkWinCondition()){
+		playNextLevel();
+		return false;
+	}
 
 	//Apply physicsManager forces
 	Vector3* normal = currTile->tileNorm;
@@ -74,15 +83,34 @@ bool MiniGolf::Update(){
 
 	//If the ball is not moving, we need to aim the ball
 	//Calculate the angle between the mouse point and the ball position
-	modelViews[1] = modelViews[0];
-	modelViews[1] = glm::rotate(modelViews[1], arrowAngle - 90.0f, glm::vec3(0.0f, 0.0f, 1.0f));
+	if(!ballMoving){
+		isVisible[1] = true;
+		modelViews[1] = modelViews[0];
+		modelViews[1] = glm::rotate(modelViews[1], arrowAngle - 90.0f, glm::vec3(0.0f, 0.0f, 1.0f));
+	} else {
+		isVisible[1] = false;
+	}
 
 	return true;
+}
+
+bool MiniGolf::checkWinCondition(){	
+	float x = abs(ball.position->getX() - cup.x);
+	float z = abs(ball.position->getZ() - cup.z);
+
+	if (x < 0.12 && z < 0.12) {
+		std::cout <<"Level Completed: Strokes: " << strokeNum << " Total Score: "<< totalScore <<endl;
+		totalScore += strokeNum;
+		strokeNum = 0;
+		return true;
+	}
+	return false;
 }
 
 void MiniGolf::buildGameLevel(int level){
 	ball.Initialize(tees[level].x, tees[level].y, tees[level].z);
 	cup.setPos(cups[level].x, cups[level].y, cups[level].z);
+	modelViews[2] = glm::translate(defaultView,glm::vec3(cup.x, cup.z, cup.y));
 }
 
 void MiniGolf::keyboard(unsigned char key, int x, int y){
@@ -95,9 +123,9 @@ void MiniGolf::keyboard(unsigned char key, int x, int y){
 			else camManager->setCamSetting(Camera::FREE);
 			break;
 		case 100: camManager->moveCam(Camera::dirRight); break;
-		//case 101: arrowAngle-=ARROW_TURN_SPEED; break;
+		case 101: arrowAngle-=ARROW_TURN_SPEED; break;
 		//case 102: newLevel(); break;
-		//case 113: arrowAngle+=ARROW_TURN_SPEED; break;
+		case 113: arrowAngle+=ARROW_TURN_SPEED; break;
     	//case 114: resetBall(); break;
 		case 115: camManager->moveCam(Camera::dirBack); break;
 		case 119: camManager->moveCam(Camera::dirForward); break;
@@ -111,7 +139,8 @@ void MiniGolf::mouse(int button, int state, int x, int y){
          if (state == GLUT_DOWN) {
 			 if(!ballMoving){
 				// golfBall->launchBall(MAX_BALL_SPEED);
-				// strokeNum++;
+				 ball.launchBall(MAX_BALL_SPEED, arrowAngle);
+				 strokeNum++;
 			 }
 			 glutPostRedisplay();
          }

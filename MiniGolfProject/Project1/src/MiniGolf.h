@@ -9,12 +9,15 @@ public:
 	Cup cup;
 	Tee tee;
 
+	int strokeNum, totalScore;
+
 	vector<int> levelPars;
 	vector<string> levelNames;
 
 	MiniGolf(void);
 	~MiniGolf(void);
 
+	void UpdateObjPositions();
 	bool Update();
 	void GameInit();
 
@@ -23,6 +26,7 @@ public:
 	void mouseMove(int x, int y);
 
 private:
+	bool checkWinCondition();
 	float arrowAngle;
 	bool ballMoving;
 

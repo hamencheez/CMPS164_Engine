@@ -28,9 +28,11 @@ public:
 	vector<float> getWallNorms(){return wallNorms;}
 	vector<float> getWallColor(){return wallColor;}
 
+	vector<glm::vec3> objPositions;
 	vector<glm::mat4> modelViews;
 	map<int, pair<int, int>> objIndices;
 	vector<vector<float>> objVerts, objNorms, objColor;
+	vector<bool> isVisible;
 
 	virtual bool Update() = 0;
 	virtual void GameInit() = 0;
@@ -46,6 +48,7 @@ public:
 	glm::vec3 getCamPos();
 	glm::vec3 getCamTarg();
 	glm::vec3 getCamUP();
+	glm::vec3 defaultPos;
 
 protected:
 	Camera* camManager;

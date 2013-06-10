@@ -23,11 +23,13 @@ void GameObject::Initialize(map<string, vector<float>>* objData, vector<vector<T
 	GameInit();
 	buildLevel(currLevel - 1);
 	defaultView = mView;
+	defaultPos = glm::vec3(0, 0, 0);
 }
 
 void GameObject::setDefaultModelView(glm::mat4 mView){
 	for(int i = 0; i < objVerts.size(); i++){
 		modelViews.push_back(mView);
+		isVisible.push_back(true);
 	}
 }
 
