@@ -27,7 +27,7 @@ void GameObject::Initialize(map<string, vector<float>>* objData, vector<vector<T
 }
 
 void GameObject::setDefaultModelView(glm::mat4 mView){
-	for(int i = 0; i < objVerts.size(); i++){
+	for(int i = 0; i < objIndices.size(); i++){
 		modelViews.push_back(mView);
 		isVisible.push_back(true);
 	}

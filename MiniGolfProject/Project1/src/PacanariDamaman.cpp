@@ -4,8 +4,13 @@ const float MIN_BALL_SPEED = 0.005f;
 const float MAX_BALL_SPEED = 0.03f;
 const float ARROW_TURN_SPEED = 10.0f;
 const float ANGLE_DRAG_SPEED = 0.4f;
-const float SPHERE_LARGE_SCALE = 4.0f;
-const float PACANARI_SCALE = 0.4f;
+const float SPHERE_LARGE_SCALE = 2.0f;
+const float SPHERE_SMALL_SCALE = 0.5f;
+const float PACANARI_SCALE = 0.27f;
+
+const float LIMB_SWING_SPEED = 15.0f;
+const float LIMB_MAX_ANGLE = 60.0f;
+const float LIMB_MIN_ANGLE = -60.0f;
 
 PacanariDamaman::PacanariDamaman(void)
 {
@@ -18,8 +23,8 @@ PacanariDamaman::~PacanariDamaman(void)
 void PacanariDamaman::GameInit(){	
 	levelPars = resMan->getLevelPars();
 	levelNames = resMan->getLevelNames();
-	ballMoving = nextLevelCheat = false;
-	arrowAngle = 0;
+	ballMoving = nextLevelCheat = swingDir = false;
+	arrowAngle = rightAngle = leftAngle = 0;
 	strokeNum = totalScore = 0;
 	objVerts.push_back(gameObjectData->at("ballVert"));
 	objVerts.push_back(gameObjectData->at("cupVert"));
@@ -41,6 +46,9 @@ void PacanariDamaman::GameInit(){
 	objIndices[2] = make_pair(2, 2);
 	objIndices[3] = make_pair(3, 3);
 	objIndices[4] = make_pair(4, 4);
+	objIndices[5] = make_pair(5, 4);
+	objIndices[6] = make_pair(6, 4);
+	objIndices[7] = make_pair(7, 4);
 	setDefaultModelView(defaultView);
 		
 	cup = Cup();
@@ -49,10 +57,7 @@ void PacanariDamaman::GameInit(){
 	modelViews[1] = glm::translate(defaultView,glm::vec3(cup.x, cup.z, cup.y));
 	ball.Initialize(tees[0].x, tees[0].y, tees[0].z);
 	camManager = new Camera(&ball);
-	camManager->setCamPos(5, 5, 7);
-	camManager->setCamTarg(0, 0, 0);
 
-	modelViews[2] = glm::scale(modelViews[2], glm::vec3(PACANARI_SCALE, PACANARI_SCALE, PACANARI_SCALE));
 
 }
 
@@ -111,19 +116,52 @@ bool PacanariDamaman::Update(){
 	
 	//std::cout << "Down vector is (" << curr.down->getX() << ", " << curr.down->getY() << ", " <<curr.down->getZ() << ")" <<std::endl;
 	modelViews[0] = glm::translate(defaultView, glm::vec3(ball.position->getX(), ball.position->getZ(), ball.position->getY()));
-	modelViews[2] = modelViews[0];
-	modelViews[2] = glm::rotate(modelViews[0], arrowAngle - 90.0f, glm::vec3(0.0f, 0.0f, 1.0f));
-		
+	updatePacanariDamaman();
+
 	if ((ball.velocity->getLength() < MIN_BALL_SPEED) && currTile->slope == 0) { 
 		ballMoving = false;
 		ball.velocity = new Vector3(0.0, 0.0, 0.0);
 	} else ballMoving = true;
 	//draw_string(0.0, 0.0, 0.0, "scojfadofj");	
 
-	modelViews[3] = modelViews[4] = modelViews[2];
 	//If the ball is not moving, we need to aim the ball
 	//Calculate the angle between the mouse point and the ball position
 	return true;
+}
+
+void PacanariDamaman::updatePacanariDamaman(){
+	modelViews[2] = modelViews[0];
+	modelViews[2] = glm::scale(modelViews[2], glm::vec3(PACANARI_SCALE, PACANARI_SCALE, PACANARI_SCALE));
+	modelViews[2] = glm::rotate(modelViews[2], arrowAngle - 90.0f, glm::vec3(0.0f, 0.0f, 1.0f));
+	modelViews[2] = glm::translate(modelViews[2], glm::vec3(0, 0, 0.15));
+	modelViews[3] = modelViews[2];
+	modelViews[4] = modelViews[5] = modelViews[6] = modelViews[7] = modelViews[2];
+	modelViews[4] = glm::translate(modelViews[2], glm::vec3(0.07, 0.0, 0.07));
+	modelViews[5] = glm::translate(modelViews[2], glm::vec3(-0.07, 0.0, 0.07));
+	modelViews[6] = glm::translate(modelViews[2], glm::vec3(0.07, 0.0, 0.24));
+	modelViews[7] = glm::translate(modelViews[2], glm::vec3(-0.07, 0.0, 0.24));
+
+	if(ballMoving){
+		if(swingDir){
+			if(rightAngle < LIMB_MAX_ANGLE){
+				rightAngle += LIMB_SWING_SPEED;
+				leftAngle -= LIMB_SWING_SPEED;
+			} else {
+				swingDir = !swingDir;
+			}
+		} else {
+			if(rightAngle > LIMB_MIN_ANGLE){
+				rightAngle -= LIMB_SWING_SPEED;
+				leftAngle += LIMB_SWING_SPEED;
+			} else swingDir = !swingDir;
+		}
+	}
+
+	modelViews[4] = glm::rotate(modelViews[4], rightAngle, glm::vec3(1.0, 0, 0));
+	modelViews[5] = glm::rotate(modelViews[5], leftAngle, glm::vec3(1.0, 0, 0));
+	modelViews[6] = glm::rotate(modelViews[6], leftAngle, glm::vec3(1.0, 0, 0));
+	modelViews[7] = glm::rotate(modelViews[7], rightAngle, glm::vec3(1.0, 0, 0));
+
 }
 
 bool PacanariDamaman::checkWinCondition(){	
@@ -143,6 +181,7 @@ void PacanariDamaman::buildGameLevel(int level){
 	ball.Initialize(tees[level].x, tees[level].y, tees[level].z);
 	cup.setPos(cups[level].x, cups[level].y, cups[level].z);
 	modelViews[1] = glm::translate(defaultView,glm::vec3(cup.x, cup.z, cup.y));
+	camManager->setCamPos(5, 5, 7);
 	//objIndices.clear();
 	//objIndices[0] = make_pair(0, 0);
 	//objIndices[1] = make_pair(1, 1);

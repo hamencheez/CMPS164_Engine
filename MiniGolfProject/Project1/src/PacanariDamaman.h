@@ -26,9 +26,13 @@ public:
 	void mouseMove(int x, int y);
 
 private:
+	void updatePacanariDamaman();
 	void buildTileObjects();
 	bool checkWinCondition();
-	float arrowAngle;
+
+	float arrowAngle, rightAngle, leftAngle;
+	bool swingDir;
+
 	bool ballMoving;
 	bool nextLevelCheat;
 
