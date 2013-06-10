@@ -3,7 +3,7 @@
 #define PI 3.141592653589793
 
 const float FRICTION = 0.995f;
-const float GRAVITY = 0.0006f;
+const float GRAVITY = 0.001f;
 
 //We can construct a plane out of the normal in the equation
 //P => ax + by + c = ax1 + by1 + cz1

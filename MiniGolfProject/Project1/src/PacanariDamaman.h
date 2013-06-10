@@ -9,10 +9,8 @@ public:
 	Cup cup;
 	Tee tee;
 
-	int totalScore;
+	int strokeNum, totalScore;
 
-	vector<SphereLarge> objLarge;
-	vector<SphereSmall> objSmall;
 	vector<int> levelPars;
 	vector<string> levelNames;
 
@@ -28,14 +26,9 @@ public:
 	void mouseMove(int x, int y);
 
 private:
-	float ballRot, ballRotSpeed;
-
-	bool leftMouseDown;
-	int boost;
 	void updatePacanariDamaman();
 	void buildTileObjects();
 	bool checkWinCondition();
-	void checkObjCollect();
 
 	float arrowAngle, rightAngle, leftAngle;
 	bool swingDir;

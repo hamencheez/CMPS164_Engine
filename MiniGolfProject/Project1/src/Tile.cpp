@@ -5,7 +5,7 @@
 using namespace std;
 
 const float OBJ_DENSITY = 0.9f;
-const float WALL_HEIGHT = 0.2f;
+const float WALL_HEIGHT = 0.3f;
 
 float Tile::getHeightOfPoint(int x1, int z1){
 	Vector3* norm = tileNorm;
@@ -13,7 +13,7 @@ float Tile::getHeightOfPoint(int x1, int z1){
 	x = norm->getX() * (xVertex.at(0) - x1);
 	y = norm->getY() * yVertex.at(0);
 	z = norm->getZ() * (zVertex.at(0) - z1);
-	height = norm->multiply(0.02)->getY();
+	height = norm->multiply(0.04)->getY();
 	return ((x + y + z) / norm->getY()) + abs(height);
 }
 
@@ -43,9 +43,9 @@ void Tile::buildAllTileObjects(){
 		z = minZ + (float)rand()/((float)RAND_MAX/(maxZ-minZ));
 		y = getHeightOfPoint(x, z);
 		if(rand() % 100 > 90){
-			objSpL.push_back(SphereLarge(x, y, z, objSpL.size()));
+			objSpL.push_back(SphereLarge(x, y, z));
 		} else {
-			objSpS.push_back(SphereSmall(x, y, z, objSpS.size()));
+			objSpS.push_back(SphereSmall(x, y, z));
 		}
 	}
 }
