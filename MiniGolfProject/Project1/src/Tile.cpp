@@ -43,9 +43,9 @@ void Tile::buildAllTileObjects(){
 		z = minZ + (float)rand()/((float)RAND_MAX/(maxZ-minZ));
 		y = getHeightOfPoint(x, z);
 		if(rand() % 100 > 90){
-			objSpL.push_back(SphereLarge(x, y, z));
+			objSpL.push_back(SphereLarge(x, y, z, objSpL.size()));
 		} else {
-			objSpS.push_back(SphereSmall(x, y, z));
+			objSpS.push_back(SphereSmall(x, y, z, objSpS.size()));
 		}
 	}
 }

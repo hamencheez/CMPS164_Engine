@@ -27,4 +27,6 @@ public:
 	void setVelocity(float x, float y, float z);
 
 	void launchBall(float speed, float angle);	
+
+	void addVelocity(float speed, float angle);
 };
