@@ -14,6 +14,10 @@ const float LIMB_SWING_SPEED = 15.0f;
 const float LIMB_MAX_ANGLE = 60.0f;
 const float LIMB_MIN_ANGLE = -60.0f;
 
+//Sylstuff:
+int mousePacX, mousePacY;
+bool rightPacClicked;
+
 PacanariDamaman::PacanariDamaman(void)
 {
 }
@@ -288,6 +292,7 @@ void PacanariDamaman::keyboard(unsigned char key, int x, int y){
 }
 
 void PacanariDamaman::mouse(int button, int state, int x, int y){
+	printf("\n mouse info, button: %d, state: %d, x: %d, y: %d", button, state, x, y);
 	switch (button) {
 		case GLUT_LEFT_BUTTON:
          if (state == GLUT_DOWN) {
@@ -301,17 +306,52 @@ void PacanariDamaman::mouse(int button, int state, int x, int y){
          break;
       case GLUT_RIGHT_BUTTON:
          if (state == GLUT_DOWN) {
+		  //~~Sylstuff:
+			 mousePacX = x;
+			 mousePacY = y;
+			 rightPacClicked = true;
+		//~~
  			 glutPostRedisplay();
          }
          else if (state == GLUT_UP) {
+			 rightPacClicked = false;
  			 glutPostRedisplay();
          }
          break;
+	  case 3: //scroll up
+         camManager->moveCam(Camera::dirForward); break;
+	  case 4: //scroll down
+         camManager->moveCam(Camera::dirBack); break;
       default:
          break;
    }
 }		
-
+//Sylstuff:
 void PacanariDamaman::mouseMove(int x, int y){
-
+	float old = camManager->distToKeep;
+	Vector3* dist = camManager->camPos;
+	dist = dist->subtract(camManager->camTarg);
+	float length = dist->getLength();
+	camManager->distToKeep = length;
+	if (x>mousePacX && rightPacClicked) { //printf("\nx move, length = %f", length);
+		camManager->moveCam(Camera::dirLeft);
+		mousePacX = x;
+		camManager->keepDistance();
+	}
+	if (x<mousePacX && rightPacClicked) {//printf("\nx move, length = %f", length);
+		camManager->moveCam(Camera::dirRight);
+		mousePacX = x;
+		camManager->keepDistance();
+	}
+	if (y>mousePacY && rightPacClicked) {//printf("\ny move, length = %f", length);
+		camManager->moveCam(Camera::dirUp);
+		mousePacY = y;
+		//camManager->keepDistance();
+	}
+	if (y<mousePacY && rightPacClicked) {//printf("\ny move, length = %f", length);
+		camManager->moveCam(Camera::dirDown);
+		mousePacY = y;
+		//camManager->keepDistance();
+	}
+	camManager->distToKeep = old;
 }

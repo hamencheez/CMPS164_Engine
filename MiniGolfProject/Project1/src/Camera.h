@@ -34,7 +34,7 @@ public:
 	bool freeLook, trackBall;
 
 	enum CameraSetting {FREE, TRACK_BALL, TOP_DOWN};
-	enum CamMoveDir {dirForward, dirBack, dirLeft, dirRight};
+	enum CamMoveDir {dirForward, dirBack, dirLeft, dirRight, dirUp, dirDown};
 
 	CameraSetting camSetting;
 

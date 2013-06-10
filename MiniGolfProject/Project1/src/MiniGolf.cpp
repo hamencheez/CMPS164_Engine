@@ -5,6 +5,10 @@ const float MAX_BALL_SPEED = 0.03f;
 const float ARROW_TURN_SPEED = 10.0f;
 const float ANGLE_DRAG_SPEED = 0.4f;
 
+//Sylstuff:
+int mouseGolfX, mouseGolfY;
+bool rightGolfClicked;
+
 MiniGolf::MiniGolf(void)
 {
 }
@@ -134,6 +138,7 @@ void MiniGolf::keyboard(unsigned char key, int x, int y){
 }
 
 void MiniGolf::mouse(int button, int state, int x, int y){
+	printf("\n mouse info, button: %d, state: %d, x: %d, y: %d", button, state, x, y);
 	switch (button) {
 		case GLUT_LEFT_BUTTON:
          if (state == GLUT_DOWN) {
@@ -150,17 +155,51 @@ void MiniGolf::mouse(int button, int state, int x, int y){
          break;
       case GLUT_RIGHT_BUTTON:
          if (state == GLUT_DOWN) {
+		  //~~Sylstuff:
+			 mouseGolfX = x;
+			 mouseGolfY = y;
+			 rightGolfClicked = true;
+		//~~
  			 glutPostRedisplay();
          }
          else if (state == GLUT_UP) {
+			 rightGolfClicked = false;
  			 glutPostRedisplay();
          }
          break;
+	  case 3: //scroll up
+         camManager->moveCam(Camera::dirForward); break;
+	  case 4: //scroll down
+         camManager->moveCam(Camera::dirBack); break;
       default:
          break;
    }
 }		
 
+//Sylstuff:
 void MiniGolf::mouseMove(int x, int y){
-
+	float old = camManager->distToKeep;
+	Vector3* dist = camManager->camPos;
+	dist = dist->subtract(camManager->camTarg);
+	float length = dist->getLength();
+	camManager->distToKeep = length;
+	if (x>mouseGolfX && rightGolfClicked) {
+		camManager->moveCam(Camera::dirLeft);
+		mouseGolfX = x;
+		camManager->keepDistance();
+	}
+	if (x<mouseGolfX && rightGolfClicked) {
+		camManager->moveCam(Camera::dirRight);
+		mouseGolfX = x;
+		camManager->keepDistance();
+	}
+	if (y>mouseGolfY && rightGolfClicked) {
+		camManager->moveCam(Camera::dirUp);
+		mouseGolfY = y;
+	}
+	if (y<mouseGolfY && rightGolfClicked) {
+		camManager->moveCam(Camera::dirDown);
+		mouseGolfY = y;
+	}
+	camManager->distToKeep = old;
 }

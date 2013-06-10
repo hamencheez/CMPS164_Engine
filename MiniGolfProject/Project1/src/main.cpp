@@ -306,6 +306,9 @@ void display() {
 	//updateBall();
 
 	if(!currGame->Update()) bindLevelVecs();
+	//~Sylstuff:
+	currGame->updateCam();
+	//~~
 	modelViews = currGame->modelViews;
 	objVisible = currGame->isVisible;
 	
@@ -626,6 +629,7 @@ int main(int argc, char **argv) {
 	pacaGame->Initialize(resManager->getObjData(), resManager->getLevels(), resManager->getCups(),
 						resManager->getTees(), physicsManager, defaultView, resManager);
 	currGame = pacaGame;
+	//currGame = golfGame;
 
 	cameraManager = new Camera();
 

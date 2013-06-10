@@ -156,6 +156,15 @@ void Camera::moveCam(CamMoveDir dir){
 			dif = dif->multiply(CAMERA_MOVE_SPEED);
 			camPos = camPos->add(dif);
 		} break;
+		case dirUp:{
+			Vector3* dif = new Vector3(0, CAMERA_MOVE_SPEED, 0);
+			camPos = camPos->subtract(dif);
+			//printf("/ncamPos Up: [%f, %f, %f]", camPos->getX(), camPos->getY(), camPos->getZ());
+		} break;
+		case dirDown:{
+			Vector3* dif = new Vector3(0, CAMERA_MOVE_SPEED, 0);
+			camPos = camPos->add(dif);
+		} break;
 	}
 }
 

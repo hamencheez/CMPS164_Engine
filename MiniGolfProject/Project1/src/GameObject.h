@@ -45,6 +45,9 @@ public:
 	virtual void mouse(int button, int state, int x, int y) = 0;
 	virtual void mouseMove(int x, int y) = 0;
 
+	//~~SylStuff:
+	void updateCam() {camManager->update();}
+
 	glm::vec3 getCamPos();
 	glm::vec3 getCamTarg();
 	glm::vec3 getCamUP();
