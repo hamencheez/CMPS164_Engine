@@ -21,5 +21,5 @@ bool SphereLarge::collide(float x, float z){
 }
 
 bool SphereLarge::collide(Vector3* otherPos){
-	return (position->subtract(otherPos)->getLength() < 0.07);
+	return (position->subtract(otherPos)->getLength() < 1.0);
 }

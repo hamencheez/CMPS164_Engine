@@ -28,6 +28,8 @@ public:
 	void mouseMove(int x, int y);
 
 private:
+	float ballRot, ballRotSpeed;
+
 	bool leftMouseDown;
 	int boost;
 	void updatePacanariDamaman();

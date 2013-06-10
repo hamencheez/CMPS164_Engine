@@ -5,7 +5,7 @@
 using namespace std;
 
 const float OBJ_DENSITY = 0.9f;
-const float WALL_HEIGHT = 0.3f;
+const float WALL_HEIGHT = 0.2f;
 
 float Tile::getHeightOfPoint(int x1, int z1){
 	Vector3* norm = tileNorm;
@@ -13,7 +13,7 @@ float Tile::getHeightOfPoint(int x1, int z1){
 	x = norm->getX() * (xVertex.at(0) - x1);
 	y = norm->getY() * yVertex.at(0);
 	z = norm->getZ() * (zVertex.at(0) - z1);
-	height = norm->multiply(0.04)->getY();
+	height = norm->multiply(0.02)->getY();
 	return ((x + y + z) / norm->getY()) + abs(height);
 }
 

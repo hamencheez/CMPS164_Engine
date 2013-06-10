@@ -1,9 +1,9 @@
 #include "PacanariDamaman.h"
 
 const float MIN_BALL_SPEED = 0.001f;
-const float MAX_BALL_SPEED = 0.004f;
+const float MAX_BALL_SPEED = 0.007f;
 const float BOOST_SPEED = 0.2f;
-const float BALL_ACCEL = 0.0001;
+const float BALL_ACCEL = 0.0003;
 const float ARROW_TURN_SPEED = 10.0f;
 const float ANGLE_DRAG_SPEED = 0.4f;
 const float SPHERE_LARGE_SCALE = 2.0f;
@@ -28,6 +28,7 @@ void PacanariDamaman::GameInit(){
 	ballMoving = nextLevelCheat = swingDir = leftMouseDown = false;
 	arrowAngle = rightAngle = leftAngle = 0;
 	totalScore = boost = 0;
+	ballRot = ballRotSpeed = 0;
 	objVerts.push_back(gameObjectData->at("ballVert"));
 	objVerts.push_back(gameObjectData->at("cupVert"));
 	objVerts.push_back(gameObjectData->at("pacanariBodyVert"));
@@ -141,6 +142,17 @@ bool PacanariDamaman::Update(){
 
 	//Check to see if we're in the cup
 	if(checkWinCondition() || nextLevelCheat){
+		objIndices.clear();
+		modelViews.clear();
+		objIndices[0] = make_pair(0, 0);
+		objIndices[1] = make_pair(1, 1);
+		objIndices[2] = make_pair(2, 2);
+		objIndices[3] = make_pair(3, 3);
+		objIndices[4] = make_pair(4, 4);
+		objIndices[5] = make_pair(5, 4);
+		objIndices[6] = make_pair(6, 4);
+		objIndices[7] = make_pair(7, 4);
+		setDefaultModelView(defaultView);
 		playNextLevel();
 		nextLevelCheat = false;
 		return false;
@@ -176,6 +188,8 @@ bool PacanariDamaman::Update(){
 }
 
 void PacanariDamaman::updatePacanariDamaman(){
+	
+	
 	modelViews[2] = modelViews[0];
 	modelViews[2] = glm::scale(modelViews[2], glm::vec3(PACANARI_SCALE, PACANARI_SCALE, PACANARI_SCALE));
 	modelViews[2] = glm::rotate(modelViews[2], arrowAngle - 90.0f, glm::vec3(0.0f, 0.0f, 1.0f));
@@ -186,6 +200,13 @@ void PacanariDamaman::updatePacanariDamaman(){
 	modelViews[5] = glm::translate(modelViews[2], glm::vec3(-0.07, 0.0, 0.07));
 	modelViews[6] = glm::translate(modelViews[2], glm::vec3(0.07, 0.0, 0.24));
 	modelViews[7] = glm::translate(modelViews[2], glm::vec3(-0.07, 0.0, 0.24));
+	
+	ballRotSpeed = ball.velocity->getLength() * 10.0f;
+
+	if(ballRot > 360) ballRot = 0;
+	ballRot += ballRotSpeed;
+	float rotAngle = ballRot * 3.1415926 / 180;
+	modelViews[0] = glm::rotate(modelViews[0], rotAngle, glm::vec3(cos(arrowAngle), 0, sin(arrowAngle)));
 
 	if(leftMouseDown){
 		if(swingDir){
@@ -225,12 +246,6 @@ void PacanariDamaman::buildGameLevel(int level){
 	cup.setPos(cups[level].x, cups[level].y, cups[level].z);
 	modelViews[1] = glm::translate(defaultView,glm::vec3(cup.x, cup.z, cup.y));
 	camManager->setCamPos(2, 2, 2);
-	//objIndices.clear();
-	//objIndices[0] = make_pair(0, 0);
-	//objIndices[1] = make_pair(1, 1);
-	//objIndices[2] = make_pair(2, 2);
-	//objIndices[3] = make_pair(3, 3);
-	//objIndices[4] = make_pair(4, 4);
 	buildTileObjects();
 }
 
