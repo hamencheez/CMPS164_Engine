@@ -3,19 +3,13 @@
 
  */
 
-#include "../GL/glew.h"
-#include "../GL/freeglut.h"
-#include "../GL/glui.h"
 //#include <GL/gl.h>
 
 #define GLM_SWIZZLE
-#include "../glm/glm.hpp"
-#include "../glm/gtc/type_ptr.hpp"
-#include "../glm/gtc/matrix_transform.hpp"
-#include "../glm/gtc/matrix_access.hpp"
 
-#include "ResourceManager.h"
-#include "Camera.h"
+#include "GameObject.h"
+#include "MiniGolf.h"
+#include "PacanariDamaman.h"
 
 #include <cmath>
 
@@ -122,8 +116,14 @@ ResourceManager* resManager;
 Camera* cameraManager;
 Physics* physicsManager;
 Ball* golfBall;
+GameObject* currGame;
+MiniGolf* golfGame;
+PacanariDamaman* pacaGame;
 
-vector<float> verts, norms, color;
+vector<float> verts, norms, color, levelVerts, levelNorms, levelColor, wallVerts, wallNorms, wallColor;
+vector<glm::mat4> modelViews;
+vector<vector<float>> objVerts, objNorms, objColor;
+map<int, pair<int, int>> objIndices;
 
 bool xSelect, ySelect, zSelect, scaleSelect, cameraSelect;
 bool mouseDownL, mouseDownR, bBox, smoothShade, freeLook, ballMoving;
@@ -151,10 +151,20 @@ glm::vec3 ballPos;
 
 int level;
 
-const float MIN_BALL_SPEED = 0.005f;
-const float MAX_BALL_SPEED = 0.07f;
-const float ARROW_TURN_SPEED = 10.0f;
-const float ANGLE_DRAG_SPEED = 0.4f;
+
+void bindLevelVecs(){
+	levelVerts = currGame->getLevelVerts();
+	levelNorms = currGame->getLevelNorms();
+	levelColor = currGame->getLevelColor();
+	wallVerts  = currGame->getWallVerts();
+	wallNorms  = currGame->getWallNorms();
+	wallColor  = currGame->getWallColor();
+	objIndices = currGame->objIndices;
+	objVerts = currGame->objVerts;
+	objNorms = currGame->objNorms;
+	objColor = currGame->objColor;
+	modelViews = currGame->modelViews;
+}
 
 void draw_string( float x, float y, float z, char *txt )
   //  Draws the text string at (x,y,z)
@@ -178,19 +188,7 @@ void reshape(int w, int h) {
     );
 }
 
-//not sure if this works, don't think it does
-void translateMatrix(float x, float y, float z, glm::mat4 &matToTrans){
-	transMat = glm::mat4(
-        glm::vec4(1.0, 0.0, 0.0, 0.0),
-        glm::vec4(0.0, 1.0, 0.0, 0.0),
-        glm::vec4(0.0, 0.0, 1.0, 0.0),
-        glm::vec4(x,   y,   z,   1.0)
-	);
-
-	matToTrans *= transMat;
-}
-//Unfinished/Untested code, ignore for now
-
+/*
 void resetBall(){
 	golfBall->velocity->setPos(0, 0, 0);
 	ballPos = glm::vec3(resManager->getTee(level).x, resManager->getTee(level).y, resManager->getTee(level).z);
@@ -198,15 +196,15 @@ void resetBall(){
 
 void newLevel(){
 	level++;
-	if(level < resManager->maxLevel){
-		resManager->playNextLevel(level);
+	totalScore += strokeNum;
+	strokeNum = 0;
+	if(resManager->playNextLevel(level)){
 		golfBall->velocity = new Vector3(0, 0, 0);
 		ballPos = glm::vec3(resManager->getTee(level).x, resManager->getTee(level).y, resManager->getTee(level).z);
+		bindVectors();
 	} else {
 		cout << "YOU WIN!" << endl;
 	}
-	//modelViewBall = glm::translate(modelView, glm::vec3(resManager->getTee().x, resManager->getTee().z, resManager->getTee().y));
-
 }
 
 void checkForBallInHole() {
@@ -220,93 +218,24 @@ void checkForBallInHole() {
 	}
 }
 
-void checkForCollision(Tile tile) {
-	//3D plane
-	//If we dot the normal of the plane with the ray direction, we know if we're approaching or not
-	//1 means they're heading straight at each other
-	//0 means parallel
-	//-1 means moving away
-	//So if the dot product is less than or equal to 0, we can ignore it
-
-	//If: Position vector to plane distance > 0 and Position plus velocity to plane distance <= 0
-	//    Or opposite
-	//Then: We have a collision
-
-	for (unsigned int itor = 0; itor < tile.neighbors.size(); ++itor) {
-		//if (tile.neighbors.at(itor) != 0) continue;
-
-		//First check the dot product between the wall's normal and the
-		//direction of the ball, aka the velocity vector
-		
-		//To do this, calculate the wall's normal
-		Vector3 *vec1 = new Vector3(tile.xVertex.at(itor) - tile.xVertex.at((itor + 1) % 
-			tile.neighbors.size()), 0, tile.zVertex.at(itor) - tile.zVertex.at((itor + 1) % 
-			tile.neighbors.size()));
-		Vector3 *vec2 = new Vector3(0, 1, 0);
-		Vector3 *wallNormal = vec1->cross(vec2);
-		wallNormal = wallNormal->normalize();
-		
-		//std::cout <<"Normal is (" << wallNormal->getX() << ", " << wallNormal->getY() << ", " << wallNormal->getZ() << ")" <<std::endl;
-
-		double dotProduct = wallNormal->dot(golfBall->velocity);
-
-		//std::cout <<"Dot product is " << dotProduct <<std::endl;
-		if (dotProduct >= 0) continue;
-
-		//cout << "expected collision" << endl;
-
-		//If greater than one, we are moving towards the wall
-		//and need to check for a collision
-
-		//We can determine the distance from the plane by the equation
-		//D = N dot (x0 - x1), where x1 is any point we know is on the plane
-		Vector3* v1 = vec1;
-		v1 = new Vector3(tile.xVertex.at(itor), 0, tile.zVertex.at(itor));
-
-		double distanceBallToWall = wallNormal->dot(golfBall->position->subtract(v1));
-		
-		Vector3* v2 = vec2;
-		//Now add the velocity to the position of the ball, then see if we've passed the wall
-		v2 = (golfBall->position->add(golfBall->velocity));
-		double distanceNextStep = wallNormal->dot(v2->subtract(v1));
-
-		//std::cout <<"Distance " << distanceBallToWall << " " <<distanceNextStep <<std::endl;
-
-		int neigh = tile.neighbors.at(itor);
-
-		if (distanceNextStep == 0 || 
-			(distanceBallToWall > 0.05 && distanceNextStep < 0.05) || 
-			(distanceBallToWall < 0.05 && distanceNextStep > 0.05))
-		{
-			if (tile.neighbors.at(itor) == 0) {
-				golfBall->velocity = physicsManager->calculateReflection(wallNormal, golfBall->velocity);
-			}
-		}
-
-		delete v1;
-		delete v2;
-		delete wallNormal;
-	}
-}
-
 void updateBall() {
 	ballPos.x += golfBall->velocity->getX();
-	ballPos.y += golfBall->velocity->getY();
 	ballPos.z += golfBall->velocity->getZ();
-	golfBall->setPos(ballPos.x, ballPos.y, ballPos.z);
 	//golfBall->setVelocity(0, 0, 0);	
 	golfBall->aim = arrowAngle;
+
+	//Find the current tile we are on
+	currTile = resManager->getTile(golfBall->position, currTile, physicsManager, level);
+	ballPos.y = physicsManager->getHeightOfBall(currTile, golfBall);
+	//golfBall->setPos(ballPos.x, ballPos.y, ballPos.z);
+	//std::cout <<"Height of ball is " << height <<std::endl;
+
 	cameraManager->camTarg->setX(golfBall->position->getX());
 	cameraManager->camTarg->setY(golfBall->position->getZ());
 	cameraManager->camTarg->setZ(golfBall->position->getY());
 
-	//Find the current tile we are on
-	currTile = resManager->getTile(golfBall->position, physicsManager, level);
-	float height = physicsManager->getHeightOfBall(currTile, golfBall);
-	//std::cout <<"Height of ball is " << height <<std::endl;
-
 	//Check to see if we need to bounce off a wall
-	checkForCollision(currTile);
+	//physicsManager->checkForCollision(currTile, golfBall);
 
 	//Check to see if we're in the cup
 	checkForBallInHole();
@@ -316,7 +245,7 @@ void updateBall() {
 	golfBall->velocity = physicsManager->applyForces(golfBall->velocity, currTile.slope, currTile.downVec);
 	
 	//std::cout << "Down vector is (" << curr.down->getX() << ", " << curr.down->getY() << ", " <<curr.down->getZ() << ")" <<std::endl;
-	modelViewBall = glm::translate(modelView, glm::vec3(ballPos.x, ballPos.z, height));
+	modelViewBall = glm::translate(modelView, glm::vec3(ballPos.x, ballPos.z, ballPos.y));
 	modelViewArrow = modelViewBall;
 	modelViewArrow = glm::rotate(modelViewArrow, arrowAngle - 90.0f, glm::vec3(0.0f, 0.0f, 1.0f));
 		
@@ -334,8 +263,28 @@ void updateBall() {
 		modelViewArrow = glm::rotate(modelViewArrow, arrowAngle + angleOffset, glm::vec3(0.0f, 0.0f, 1.0f));
 	} else {
 		modelViewArrow = glm::rotate(modelViewArrow, arrowAngle - 90.0f, glm::vec3(0.0f, 0.0f, 1.0f));
-	}			
+	}	
+}
+*/
+
+
+void drawObject(glm::mat4 modelViewTemp, vector<float> verts, vector<float> norms, vector<float> color, int useLight){
+	glm::mat4 mat = camera * modelViewTemp;
+    glUniformMatrix4fv(shader->modelViewLoc, 1, GL_FALSE, glm::value_ptr(mat));
+
+    glUniform1i(shader->useLight, useLight);
+
+    glBindBuffer(GL_ARRAY_BUFFER, shader->vertexBuffer);
+    glBufferData(GL_ARRAY_BUFFER, verts.size() * sizeof(float), verts.data(), GL_DYNAMIC_DRAW );
+
+    glBindBuffer(GL_ARRAY_BUFFER, shader->normalBuffer);
+	glBufferData(GL_ARRAY_BUFFER, norms.size() * sizeof(float), norms.data(), GL_DYNAMIC_DRAW);
+
+    glBindBuffer(GL_ARRAY_BUFFER, shader->colorBuffer);
+    glBufferData(GL_ARRAY_BUFFER, color.size() * sizeof(float), color.data(), GL_DYNAMIC_DRAW);
 	
+    //draw the vertices/normals we just specified.
+    glDrawArrays(GL_TRIANGLES, 0, verts.size());
 }
 
 void checkMouse()
@@ -351,17 +300,14 @@ void display() {
     glViewport(0,0,WIN_WIDTH,WIN_HEIGHT);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-   // checkMouse();
-	updateBall();
+    //checkMouse();
+	//updateBall();
 
-	cameraManager->update();
-
-	camPos = cameraManager->getCamPos();
-	camTarg = cameraManager->getCamTarg();
-
+	if(!currGame->Update()) bindLevelVecs();
+	
 //	camPos = cameraManager->getCamPos();
 //	camTarg = cameraManager->getCamTargPos();
-    camera = glm::lookAt(camPos, camTarg, camUP);
+    camera = glm::lookAt(currGame->getCamPos(), currGame->getCamTarg(), currGame->getCamUP());
 
     //Setup the modelview matrix
     //Mat4x4F modelCam = camera * modelView;
@@ -401,25 +347,25 @@ void display() {
     glUniform1i(shader->useLight, 1);
 
     glBindBuffer(GL_ARRAY_BUFFER, shader->vertexBuffer);
-    glBufferData(GL_ARRAY_BUFFER, resManager->getNumLevelVerts() * sizeof(float), 
-				resManager->getLevelVerts().data(), GL_DYNAMIC_DRAW );
+    glBufferData(GL_ARRAY_BUFFER, levelVerts.size() * sizeof(float), 
+				levelVerts.data(), GL_DYNAMIC_DRAW );
     glEnableVertexAttribArray(shader->vertexLoc);
     glVertexAttribPointer(shader->vertexLoc, 3, GL_FLOAT, GL_FALSE, 0, NULL );
 
     glBindBuffer(GL_ARRAY_BUFFER, shader->normalBuffer); 
-	glBufferData(GL_ARRAY_BUFFER, resManager->getNumLevelNorms() * sizeof(float), 
-			resManager->getLevelNorms().data(), GL_DYNAMIC_DRAW);
+	glBufferData(GL_ARRAY_BUFFER, levelNorms.size() * sizeof(float), 
+			levelNorms.data(), GL_DYNAMIC_DRAW);
     glEnableVertexAttribArray(shader->normalLoc); 
     glVertexAttribPointer(shader->normalLoc, 3, GL_FLOAT, GL_FALSE, 0, NULL );
 
     glBindBuffer(GL_ARRAY_BUFFER, shader->colorBuffer);
-    glBufferData(GL_ARRAY_BUFFER, resManager->getNumLevelColor() * sizeof(float),
-                resManager->getLevelColor().data(), GL_DYNAMIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, levelColor.size() * sizeof(float),
+                levelColor.data(), GL_DYNAMIC_DRAW);
     glEnableVertexAttribArray(shader->colorLoc);
     glVertexAttribPointer(shader->colorLoc, 4, GL_FLOAT, GL_FALSE, 0, NULL);
 	
     //draw the vertices/normals we just specified.
-    glDrawArrays(GL_TRIANGLES, 0, resManager->getNumLevelVerts());
+    glDrawArrays(GL_TRIANGLES, 0, levelVerts.size());
 
 	////////////////////////////////////////////////////////////////////////////////////
 	//Draw the walls
@@ -431,96 +377,28 @@ void display() {
 	glUniform4f(shader->userColor, 0.85f, 0.85f, 0.85f, 0.85f);
 
     glBindBuffer(GL_ARRAY_BUFFER, shader->vertexBuffer);
-    glBufferData(GL_ARRAY_BUFFER, resManager->getNumWallVerts() * sizeof(float), 
-				resManager->getWallVerts().data(), GL_STATIC_DRAW );
+    glBufferData(GL_ARRAY_BUFFER, wallVerts.size() * sizeof(float), 
+				wallVerts.data(), GL_STATIC_DRAW );
 
     glBindBuffer(GL_ARRAY_BUFFER, shader->normalBuffer);
-	glBufferData(GL_ARRAY_BUFFER, resManager->getNumWallNorms() * sizeof(float), 
-				resManager->getWallNorms().data(), GL_STATIC_DRAW);
+	glBufferData(GL_ARRAY_BUFFER, wallNorms.size() * sizeof(float), 
+				wallNorms.data(), GL_STATIC_DRAW);
 
     glBindBuffer(GL_ARRAY_BUFFER, shader->colorBuffer);
-    glBufferData(GL_ARRAY_BUFFER, resManager->getNumWallColor() * sizeof(float),
-				resManager->getWallColor().data(), GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, wallColor.size() * sizeof(float),
+				wallColor.data(), GL_STATIC_DRAW);
 	
     //draw the vertices/normals we just specified.
-    glDrawArrays(GL_QUADS, 0, resManager->getNumWallVerts());
+    glDrawArrays(GL_QUADS, 0, wallVerts.size());
 	
 	/////////////////////////////////////////////////////////////////////////////////
-	//Draw the golfball
+	//Draw all game objects
 
-    modelCam = camera * modelViewBall;
-    glUniformMatrix4fv(shader->modelViewLoc, 1, GL_FALSE, glm::value_ptr(modelCam));
-
-    glUniform1i(shader->useLight, 0);
-
-    glBindBuffer(GL_ARRAY_BUFFER, shader->vertexBuffer);
-    glBufferData(GL_ARRAY_BUFFER, resManager->getNumBallVerts() * sizeof(float), 
-				resManager->getBallVerts().data(), GL_DYNAMIC_DRAW );
-
-  //  glBindBuffer(GL_ARRAY_BUFFER, shader->normalBuffer);
-	//glBufferData(GL_ARRAY_BUFFER, resManager->getNumBallNorms() * sizeof(float), 
-//				resManager->getBallNorms().data(), GL_DYNAMIC_DRAW);
-
-    glBindBuffer(GL_ARRAY_BUFFER, shader->colorBuffer);
-    glBufferData(GL_ARRAY_BUFFER, resManager->getNumBallColor() * sizeof(float),
-				resManager->getBallColor().data(), GL_DYNAMIC_DRAW);
+	for(int i = 0; i < objIndices.size(); i++){
+		drawObject(modelViews[objIndices[i].first],   objVerts[objIndices[i].second],
+					 objNorms[objIndices[i].second],	objColor[objIndices[i].second], 1);
+	}
 	
-    //draw the vertices/normals we just specified.
-    glDrawArrays(GL_TRIANGLES, 0, resManager->getNumBallVerts());
-
-	/////////////////////////////////////////////////////////////////////////////////
-	//Draw the arrow
-
-    modelCam = camera * modelViewArrow;
-    glUniformMatrix4fv(shader->modelViewLoc, 1, GL_FALSE, glm::value_ptr(modelCam));
-
-    glUniform1i(shader->useLight, 0);
-
-    glBindBuffer(GL_ARRAY_BUFFER, shader->vertexBuffer);
-    glBufferData(GL_ARRAY_BUFFER, resManager->getNumArrowVerts() * sizeof(float), 
-				resManager->getArrowVerts().data(), GL_DYNAMIC_DRAW );
-
-  //  glBindBuffer(GL_ARRAY_BUFFER, shader->normalBuffer);
-	//glBufferData(GL_ARRAY_BUFFER, resManager->getNumBallNorms() * sizeof(float), 
-//				resManager->getBallNorms().data(), GL_DYNAMIC_DRAW);
-
-    glBindBuffer(GL_ARRAY_BUFFER, shader->colorBuffer);
-    glBufferData(GL_ARRAY_BUFFER, resManager->getNumArrowColor() * sizeof(float),
-				resManager->getArrowColor().data(), GL_DYNAMIC_DRAW);
-	
-    //draw the vertices/normals we just specified.
-	if(!ballMoving) glDrawArrays(GL_TRIANGLES, 0, resManager->getNumArrowVerts());
-
-	/////////////////////////////////////////////////////////////////////////////////
-	//Draw the testNorms, simply displays vertex normals
-
-    modelCam = camera * modelView;
-    glUniformMatrix4fv(shader->modelViewLoc, 1, GL_FALSE, glm::value_ptr(modelCam));
-
-    glUniform1i(shader->useLight, 0);
-
-     glBindBuffer(GL_ARRAY_BUFFER, shader->vertexBuffer);
-    glBufferData(GL_ARRAY_BUFFER, resManager->getTestNorms().size() * sizeof(float), 
-				resManager->getTestNorms().data(), GL_DYNAMIC_DRAW );
-    glEnableVertexAttribArray(shader->vertexLoc);
-    glVertexAttribPointer(shader->vertexLoc, 3, GL_FLOAT, GL_FALSE, 0, NULL );
-		
-    //glDrawArrays(GL_LINES, 0,resManager->getTestNorms().size());
-
-
-	/*
-    glUniform1i(shader->useLight, 0);
-    glUniform4f(shader->userColor, 1.0f, 1.0f, 1.0f, 1.0f);
-	
-    modelCam = camera * modelView;
-    glUniformMatrix4fv(shader->modelViewLoc, 1, GL_FALSE, glm::value_ptr(modelCam));	
-	
-	translateMatrix(golfBall->position->getX(), golfBall->position->getY() + 
-					golfBall->groundOffset, golfBall->position->getZ(), modelCam);
-
-	glutSolidSphere(0.05, 16, 16);
-	*/
-
     glutSwapBuffers();
 }
 
@@ -533,6 +411,8 @@ void idle() {
 //Sets variables for doing transforms
 
 void keyboard(unsigned char key, int x, int y) {
+	currGame->keyboard(key, x, y);
+	/*
     switch (key) {
     	case 27: exit(0); break;
 		case 97: cameraManager->moveCam(Camera::dirLeft); break;
@@ -542,26 +422,28 @@ void keyboard(unsigned char key, int x, int y) {
 			else cameraManager->setCamSetting(Camera::FREE);
 			break;
 		case 100: cameraManager->moveCam(Camera::dirRight); break;
-		case 101: arrowAngle-=ARROW_TURN_SPEED; break;
-		case 102: newLevel(); break;
-		case 113: arrowAngle+=ARROW_TURN_SPEED; break;
-    	case 114: resetBall(); break;
+		//case 101: arrowAngle-=ARROW_TURN_SPEED; break;
+		//case 102: newLevel(); break;
+		//case 113: arrowAngle+=ARROW_TURN_SPEED; break;
+    	//case 114: resetBall(); break;
 		case 115: cameraManager->moveCam(Camera::dirBack); break;
 		case 119: cameraManager->moveCam(Camera::dirForward); break;
     	default: break;
-    }
+    }*/
 }
 
 //Callback for mouse button events.
 //Sets variables for position and button state.
 void mouse(int button, int state, int x, int y)
 {
+	currGame->mouse(button, state, x, y);
+	/*
     switch (button) {
 		case GLUT_LEFT_BUTTON:
          if (state == GLUT_DOWN) {
 			 mouseDownL = true;
 			 if(!ballMoving){
-				 golfBall->launchBall(MAX_BALL_SPEED);
+				// golfBall->launchBall(MAX_BALL_SPEED);
 				 strokeNum++;
 			 }
 			 glutPostRedisplay();
@@ -595,7 +477,7 @@ void mouse(int button, int state, int x, int y)
       default:
          break;
    }
-	oldState = state;
+	oldState = state;*/
    glutPostRedisplay();
 }
 
@@ -603,8 +485,7 @@ void mouse(int button, int state, int x, int y)
 //Also applies transformations, as doing so in Display was causing the
 //    transforms to slide, rather than just move.
 void mouseMove(int x, int y){
-	currX = x;
-	currY = y;
+	currGame->mouseMove(x, y);
 	glutPostRedisplay();
 }
 
@@ -634,15 +515,6 @@ void setupGL() {
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glEnable(GL_DEPTH_TEST);
 	
-	cameraManager->setCamPos(5, 5, 7);
-	cameraManager->setCamTarg(0, 0, 0);
-
-	camPos = cameraManager->getCamPos();
-	camTarg = cameraManager->getCamTarg();
-	camUP = glm::vec3(0, 0, 1);
-
-    camera = glm::lookAt(camPos, camTarg, camUP);
-
     projection = glm::perspective(
             glm::float_t(45),
             glm::float_t(WIN_WIDTH) / glm::float_t(WIN_HEIGHT),
@@ -655,11 +527,6 @@ void setupGL() {
 	modelViewCup = modelView;
 	modelViewArrow = modelView;
 
-	//golfBall->position = new Vector3(resManager->getTee().x, resManager->getTee().z, resManager->getTee().y);
-	ballPos = glm::vec3(resManager->getTee(level).x, resManager->getTee(level).y, resManager->getTee(level).z);
-	golfBall->velocity = new Vector3(0, 0, 0);
-	//modelViewBall = glm::translate(modelView, glm::vec3(ballPos.x, ballPos.y, ballPos.z));
-   // defaultView2 = camera;
 }
 
 //setup the shader program
@@ -737,14 +604,21 @@ void setupShaders() {
 }
 
 int main(int argc, char **argv) {
-	golfBall = new Ball();
-	resManager = new ResourceManager(golfBall);
-	resManager->readObjFileVerts(argv[2]);
-	resManager->readObjFileVerts(argv[3]);
-	resManager->readObjFileVerts(argv[4]);
+	resManager = new ResourceManager();
 	resManager->readCourseFile(argv[1]);
-	cameraManager = new Camera(golfBall);
+	resManager->readObjFile(argv[2]);
+	//resManager->readObjFile(argv[3]);
+
 	physicsManager = new Physics();
+
+	golfGame = new MiniGolf();
+	golfGame->Initialize(resManager->getObjData(), resManager->getLevels(), resManager->getCups(),
+						resManager->getTees(), physicsManager, defaultView, resManager);
+	currGame = golfGame;
+
+	cameraManager = new Camera();
+
+	bindLevelVecs();
 
 	strokeNum = totalScore = 0;
 	

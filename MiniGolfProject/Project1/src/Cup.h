@@ -7,10 +7,15 @@ public:
 	float y;
 	float z;
 
-	Cup() {	}
+	Cup() {}
 
-	Cup(int tileId, float xPosition, float yPosition, float zPosition) {
-		id = tileId;
+	Cup(float xPosition, float yPosition, float zPosition) {
+		x = xPosition;
+		y = yPosition;
+		z = zPosition;
+	}
+
+	void setPos(float xPosition, float yPosition, float zPosition) {
 		x = xPosition;
 		y = yPosition;
 		z = zPosition;

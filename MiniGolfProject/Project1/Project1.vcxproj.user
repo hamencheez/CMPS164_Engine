@@ -3,7 +3,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LocalDebuggerWorkingDirectory>$(ProjectDir)$(Configuration)\</LocalDebuggerWorkingDirectory>
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
-    <LocalDebuggerCommandArguments>$(ProjectDir)\course.db $(ProjectDir)\golfball.txt $(ProjectDir)\arrow.txt $(ProjectDir)\cup.txt</LocalDebuggerCommandArguments>
+    <LocalDebuggerCommandArguments>$(ProjectDir)\course.db $(ProjectDir)\minigolfObjects.txt $(ProjectDir)\pacanariObjects.txt</LocalDebuggerCommandArguments>
     <ShowAllFiles>true</ShowAllFiles>
   </PropertyGroup>
 </Project>

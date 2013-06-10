@@ -3,7 +3,7 @@
 #pragma once
 
 #include <vector>
-#include "Vector3.h"
+#include "TileObject.h"
 
 using namespace std;
 
@@ -22,6 +22,7 @@ public:
 	Vector3* downVec;
 	float slope;
 
+	vector<TileObject> objVec;
 	vector<float> xVertex;
 	vector<float> yVertex;
 	vector<float> zVertex;

@@ -1,40 +1,28 @@
 //Ball.h
 #pragma once
 
-#include "Vector3.h"
-#include "Tile.h"
-#include "../GL/freeglut.h"
+#include "TileObject.h"
 
-class Ball {
+class Ball: public TileObject {
 private:
 	
 public:
-	float groundOffset;
+	//float height;
 	float aim;
 
-	Vector3 *position; 
-	Vector3 *velocity;
-	Vector3 *initialPosition;
-	bool isMoving;
+	//Vector3 *position; 
+	//Vector3 *velocity;
+	//Vector3 *initialPosition;
+	//bool isMoving;
 
 	Ball(void){};
 	~Ball(void){};
 
-	Ball(float x, float y, float z);
-
-	void initialize(float x, float y, float z);
-
+	//void Initialize(float x, float y, float z);
+	
 	void setPos(float x, float y, float z);
 
 	void setVelocity(float x, float y, float z);
-	
-	//untested
-	void update(float y, Vector3 *down);
 
-	//untested
-	void launchBall(float speed);
-
-	//untested
-	void resetBall();
-
+	void launchBall(float speed, float angle);	
 };

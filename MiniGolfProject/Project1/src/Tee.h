@@ -7,15 +7,13 @@ public:
 	float y;
 	float z;
 
-	Tee() {
+	Tee() {}
 
-	}
-
-	Tee(int tileId, float xPosition, float yPosition, float zPosition) {
-		id = tileId;
+	Tee(float xPosition, float yPosition, float zPosition) {
 		x = xPosition;
 		y = yPosition;
 		z = zPosition;
 	}
+
 private:
 };

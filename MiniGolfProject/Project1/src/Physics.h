@@ -5,6 +5,7 @@
 #include <math.h>
 #include <time.h>
 #include <stdlib.h>
+#include "Tile.h"
 #include "Ball.h"
 
 #define PI 3.141592653589793
@@ -27,11 +28,13 @@ public:
 	//Where (a,b,c) is the normal, (x1,y1,z1) is a known point on the plane
 	//and (x,y,z) is the point we want. We know x and z, so we solve for y to find the height
 
-	float Physics::getHeightOfBall(Tile tile, Ball* ball);
+	float Physics::getHeightOfBall(Tile* tile, Ball* ball);
 
 	Vector3* Physics::applyForces(Vector3 *velocity, float angle, Vector3 *down);
 
 	bool Physics::pointOnPlane(std::vector<float> xVertex, std::vector<float> zVertex, float x, float z);
+	
+	bool Physics::pointContained(Tile* tile, Vector3* pos);
 
 	bool Physics::pointOnLine(float x1, float y1, float x2, float y2, float x, float y) ;
 
@@ -42,4 +45,6 @@ public:
 	float Physics::minNumber(std::vector<float> data);
 
 	float Physics::maxNumber(std::vector<float> data);
+
+	void Physics::checkForCollision(Tile* tile, Ball* ball);
 };

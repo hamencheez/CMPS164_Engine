@@ -138,38 +138,16 @@ void Camera::moveCam(CamMoveDir dir){
 			Vector3* dif = camTarg->subtract(camPos);
 			dif = dif->normalize();
 			dif = dif->multiply(CAMERA_MOVE_SPEED);
-			camPos = camPos->subtract(dif);				
+			camPos = camPos->subtract(dif);
 		} break;
 		case dirLeft:{
-			//printf("\n[case dirLeft in moveCam]");
-			//printf("\ncamPos:");
-			//camPos->print();
-			//printf("\ncamTarg:");
-			//camTarg->print();
 			Vector3* dif = camTarg;
-			//printf("\ndif:");
-			//dif->print();
 			dif = dif->subtract(camPos);
 			dif = dif->multiply(-1);
-			//printf("\ndif, after multiply by -1:");
-			//dif->print();
 			dif = dif->cross(camUP);
-			//printf("\ndif, after cross(camUP):");
-			//dif->print();
 			dif = dif->normalize();
-			//printf("\ndif, after normalize:");
-			//dif->print();
 			dif = dif->multiply(CAMERA_MOVE_SPEED);
-			//print for debug:
-			//printf("\ndif, after multiply(CAMERA_MOVE_SPEED):");
-			//dif->print();
 			camPos = camPos->add(dif);
-			//test add stuff to camPos:
-			//Vector3* stuff;
-			//stuff = new Vector3(2.0f, 0.0f, 0.0f);
-			//camPos = camPos->add(stuff);
-			//printf("\ncamPos, after add(dif):");
-			//camPos->print();
 		} break;
 		case dirRight:{
 			Vector3* dif = camTarg->subtract(camPos);

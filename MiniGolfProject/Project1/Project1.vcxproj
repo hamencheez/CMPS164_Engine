@@ -11,6 +11,11 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="src\PacanariDamaman.cpp" />
+    <ClCompile Include="src\MiniGolf.cpp" />
+    <ClCompile Include="src\SphereLarge.cpp" />
+    <ClCompile Include="src\SphereSmall.cpp" />
+    <ClCompile Include="src\GameObject.cpp" />
     <ClCompile Include="src\Ball.cpp" />
     <ClCompile Include="src\Camera.cpp" />
     <ClCompile Include="src\main.cpp" />
@@ -18,20 +23,28 @@
     <ClCompile Include="src\ResourceManager.cpp" />
     <ClCompile Include="src\Tile.cpp" />
     <ClCompile Include="src\Vector3.cpp" />
+    <ClCompile Include="src\TileObject.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\..\..\..\..\program files (x86)\microsoft visual studio 10.0\vc\include\vector" />
-    <None Include="ClassDiagram1.cd" />
-    <None Include="ClassDiagram2.cd" />
     <None Include="hole.00.db" />
     <None Include="hole.01.db" />
     <None Include="hole.02.db" />
+    <None Include="minigolfObjects.txt" />
+    <None Include="pacanariCourse.db" />
+    <None Include="pacanariObjects.txt" />
     <None Include="shaders\gles.frag" />
     <None Include="shaders\gles.vert" />
     <None Include="shaders\light.frag" />
     <None Include="shaders\light.vert" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="resource.h" />
+    <ClInclude Include="src\PacanariDamaman.h" />
+    <ClInclude Include="src\MiniGolf.h" />
+    <ClInclude Include="src\SphereLarge.h" />
+    <ClInclude Include="src\SphereSmall.h" />
+    <ClInclude Include="src\GameObject.h" />
     <ClInclude Include="src\Camera.h" />
     <ClInclude Include="src\Ball.h" />
     <ClInclude Include="src\Cup.h" />
@@ -40,6 +53,10 @@
     <ClInclude Include="src\Tee.h" />
     <ClInclude Include="src\Tile.h" />
     <ClInclude Include="src\Vector3.h" />
+    <ClInclude Include="src\TileObject.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="MiniGolf.rc" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{E7E87544-FE81-44FB-AEDD-EB5A24AD81FB}</ProjectGuid>
@@ -88,6 +105,7 @@
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>glew32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <Profile>true</Profile>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
