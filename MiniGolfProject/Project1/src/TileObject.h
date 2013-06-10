@@ -6,6 +6,8 @@ class TileObject
 {	
 public:
 	float height;
+	float radius;
+	float value;
 
 	Vector3 *position; 
 	Vector3 *velocity;
@@ -16,6 +18,8 @@ public:
 	~TileObject(void);
 
 	TileObject(float x, float y, float z);
+
+	virtual bool collide(float x, float z) = 0;
 
 	void Initialize(float x, float y, float z);
 

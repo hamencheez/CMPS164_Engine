@@ -10,3 +10,7 @@ void Ball::launchBall(float speed, float angle) {
 	velocity = velocity->normalize();
 	velocity = velocity->multiply(speed);
 }
+
+bool Ball::collide(float x, float z){
+	return false;
+}

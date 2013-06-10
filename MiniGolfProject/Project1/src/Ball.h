@@ -20,6 +20,8 @@ public:
 
 	//void Initialize(float x, float y, float z);
 	
+	bool collide(float x, float z);
+
 	void setPos(float x, float y, float z);
 
 	void setVelocity(float x, float y, float z);

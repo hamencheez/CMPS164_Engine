@@ -4,6 +4,8 @@
 
 #include <vector>
 #include "TileObject.h"
+#include "SphereLarge.h"
+#include "SphereSmall.h"
 
 using namespace std;
 
@@ -22,7 +24,8 @@ public:
 	Vector3* downVec;
 	float slope;
 
-	vector<TileObject> objVec;
+	vector<SphereLarge> objSpL;
+	vector<SphereSmall> objSpS;
 	vector<float> xVertex;
 	vector<float> yVertex;
 	vector<float> zVertex;
@@ -51,6 +54,9 @@ public:
 	
 	void addNeighbor(int side){neighbors.push_back(side);}
 	void buildAll();
+	void buildAllTileObjects();
+	
+	float Tile::getHeightOfPoint(int x, int z);
 
 	vector<float> getTVerts(){return tileVerts;}
 	vector<float> getTNorms(){return tileNorms;}

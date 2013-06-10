@@ -1,9 +1,54 @@
 #include "Tile.h"
 #include "Physics.h"
+#include <ctime>
 
 using namespace std;
 
+const float OBJ_DENSITY = 0.9f;
 const float WALL_HEIGHT = 0.3f;
+
+float Tile::getHeightOfPoint(int x1, int z1){
+	Vector3* norm = tileNorm;
+	float x, y, z, height;
+	x = norm->getX() * (xVertex.at(0) - x1);
+	y = norm->getY() * yVertex.at(0);
+	z = norm->getZ() * (zVertex.at(0) - z1);
+	height = norm->multiply(0.04)->getY();
+	return ((x + y + z) / norm->getY()) + abs(height);
+}
+
+void Tile::buildAllTileObjects(){
+	srand((unsigned)time(0));
+
+	float maxX, maxZ;
+	float minX, minZ;
+	float x, y, z;
+	int numObjects;
+	float area;
+	maxX = maxZ = -9999;
+	minX = minZ = 9999;
+	
+	for (unsigned int curr = 0; curr < xVertex.size() - 1; curr++) {
+		if (xVertex[curr] < minX) minX = xVertex[curr];
+		if (xVertex[curr] > maxX) maxX = xVertex[curr];
+		if (zVertex[curr] < minZ) minZ = zVertex[curr];
+		if (zVertex[curr] > maxZ) maxZ = zVertex[curr];
+	}
+
+	area = (maxX - minX) * (maxZ - minZ);
+	numObjects = (int)(area * OBJ_DENSITY);
+
+	for(int i = 0; i < numObjects; i++){
+		x = minX + (float)rand()/((float)RAND_MAX/(maxX-minX));
+		z = minZ + (float)rand()/((float)RAND_MAX/(maxZ-minZ));
+		y = getHeightOfPoint(x, z);
+		if(rand() % 100 > 90){
+			objSpL.push_back(SphereLarge(x, y, z));
+		} else {
+			objSpS.push_back(SphereSmall(x, y, z));
+		}
+	}
+}
 
 //Builds tiles and any surrounding wall
 //initializes values

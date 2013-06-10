@@ -612,15 +612,20 @@ void setupShaders() {
 int main(int argc, char **argv) {
 	resManager = new ResourceManager();
 	resManager->readCourseFile(argv[1]);
-	resManager->readObjFile(argv[2]);
+	resManager->readObjFile(argv[3]);
 	//resManager->readObjFile(argv[3]);
 
 	physicsManager = new Physics();
 
-	golfGame = new MiniGolf();
-	golfGame->Initialize(resManager->getObjData(), resManager->getLevels(), resManager->getCups(),
+	//golfGame = new MiniGolf();
+	//golfGame->Initialize(resManager->getObjData(), resManager->getLevels(), resManager->getCups(),
+	//					resManager->getTees(), physicsManager, defaultView, resManager);
+
+	
+	pacaGame = new PacanariDamaman();
+	pacaGame->Initialize(resManager->getObjData(), resManager->getLevels(), resManager->getCups(),
 						resManager->getTees(), physicsManager, defaultView, resManager);
-	currGame = golfGame;
+	currGame = pacaGame;
 
 	cameraManager = new Camera();
 

@@ -29,6 +29,8 @@ public:
 	//and (x,y,z) is the point we want. We know x and z, so we solve for y to find the height
 
 	float Physics::getHeightOfBall(Tile* tile, Ball* ball);
+	
+	float Physics::getHeightOfPoint(Tile* tile, int x, int z);
 
 	Vector3* Physics::applyForces(Vector3 *velocity, float angle, Vector3 *down);
 

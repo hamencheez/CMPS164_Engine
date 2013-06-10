@@ -20,6 +20,16 @@ float Physics::getHeightOfBall(Tile* tile, Ball* ball){
 	return ((x + y + z) / norm->getY()) + abs(ballHeight);
 }
 
+float Physics::getHeightOfPoint(Tile* tile, int x1, int z1){
+	Vector3* norm = tile->tileNorm;
+	float x, y, z, height;
+	x = norm->getX() * (tile->xVertex.at(0) - x1);
+	y = norm->getY() * tile->yVertex.at(0);
+	z = norm->getZ() * (tile->zVertex.at(0) - z1);
+	height = norm->multiply(0.04)->getY();
+	return ((x + y + z) / norm->getY()) + abs(height);
+}
+
 Vector3* Physics::applyForces(Vector3 *velocity, float angle, Vector3 *down) {
 	//First we want to apply friction
 	velocity = velocity->multiply(FRICTION);
